@@ -1,0 +1,21 @@
+# =============================================================
+# Dockerfile.dev — DESARROLLO
+# La fuente se monta como volumen desde docker-compose.dev.yml
+# Reiniciar el contenedor para recargar cambios:
+#   docker compose -f docker-compose.dev.yml restart server
+# =============================================================
+
+FROM dart:3.5
+
+WORKDIR /app
+
+# Instalar dependencias (se cachean a menos que cambie pubspec)
+COPY pubspec.* ./
+RUN dart pub get
+
+EXPOSE 8080
+# Puerto del Dart VM Observatory para debugging remoto
+EXPOSE 8181
+
+# dart run interpreta el código directamente (no compila)
+CMD ["dart", "--observe=8181/0.0.0.0", "run", "bin/main.dart"]

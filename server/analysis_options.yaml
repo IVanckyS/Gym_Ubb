@@ -1,0 +1,17 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    missing_return: error
+    unused_import: warning
+    unused_local_variable: warning
+  exclude:
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_print: false   # permitimos print para logs del servidor
+    - prefer_single_quotes
+    - require_trailing_commas
+    - sort_pub_dependencies

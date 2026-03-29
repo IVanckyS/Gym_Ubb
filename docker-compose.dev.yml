@@ -1,0 +1,66 @@
+# =============================================================
+# docker-compose.dev.yml — DESARROLLO LOCAL
+# Usar: docker compose -f docker-compose.dev.yml up --build
+# Puertos expuestos para debugging con herramientas locales
+# =============================================================
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gym_ubb_dev}
+      POSTGRES_USER: ${DB_USER:-gym_ubb_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword123}
+    ports:
+      - "5432:5432"        # Acceso directo para DBeaver, psql, etc.
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gym_ubb_user} -d ${DB_NAME:-gym_ubb_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"        # Acceso directo para Redis Insight, etc.
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"        # API
+      - "8181:8181"        # Dart VM Observatory (debugging)
+    environment:
+      RUNMODE: development
+      PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gym_ubb_dev}
+      DB_USER: ${DB_USER:-gym_ubb_user}
+      DB_PASSWORD: ${DB_PASSWORD:-devpassword123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production_min_64_chars_xxxx}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-gym-ubb}
+      ALLOWED_ORIGIN: "*"
+    volumes:
+      - ./server:/app                    # Monta fuente para edición en vivo
+      - server_dart_tool:/app/.dart_tool # Caché de pub separado del host
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  server_dart_tool:

@@ -1,0 +1,71 @@
+# Claude Code (memoria local, no subir)
+.claude/
+
+# Secretos — NUNCA subir a git
+.env
+.env.*
+!.env.example
+
+# Dart / Flutter
+.dart_tool/
+.packages
+pubspec.lock
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.g.dart
+*.freezed.dart
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/google-services.json
+android/app/*.jks
+android/captures/
+
+# Node (mockup)
+node_modules/
+dist/
+dist-ssr/
+
+# Docker volumes locales
+postgres_data/
+redis_data/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificados SSL (nunca en git)
+nginx/ssl/
+
+# Compiled Dart executables
+server/bin/server
