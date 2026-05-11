@@ -84,20 +84,38 @@ Future<Response> _startSession(Request request) async {
   final claims = await requireAuth(request);
   final userId = claims['sub'] as String;
 
+  // Parsear body primero para tener routineDayId disponible
+  final body = await parseBody(request);
+  final routineId = body['routineId'] as String?;
+  final routineDayId = body['routineDayId'] as String?;
+
   // Verificar si ya hay una sesión activa
   final activeCheck = await db.execute(
-    'SELECT id FROM workout_sessions '
+    'SELECT id, routine_day_id FROM workout_sessions '
     "WHERE user_id = '$userId'::uuid AND ended_at IS NULL "
     'ORDER BY started_at DESC LIMIT 1',
   );
   if (activeCheck.isNotEmpty) {
-    final sessionId = activeCheck.first.toColumnMap()['id'] as String;
-    return _getSession(request.change(path: ''), sessionId);
-  }
+    final row = activeCheck.first.toColumnMap();
+    final existingId = row['id'] as String;
+    final existingDayId = row['routine_day_id'] as String?;
 
-  final body = await parseBody(request);
-  final routineId = body['routineId'] as String?;
-  final routineDayId = body['routineDayId'] as String?;
+    // Misma sesión (mismo routineDayId) → devolver la existente
+    if (existingDayId == routineDayId) {
+      return _getSession(request.change(path: ''), existingId);
+    }
+
+    // Sesión huérfana o de otro día → cancelar y continuar con nueva
+    await db.execute(
+      "UPDATE personal_records SET session_id = NULL WHERE session_id = '$existingId'::uuid",
+    );
+    await db.execute(
+      "DELETE FROM workout_sets WHERE session_id = '$existingId'::uuid",
+    );
+    await db.execute(
+      "DELETE FROM workout_sessions WHERE id = '$existingId'::uuid",
+    );
+  }
 
   final sessionId = _uuid.v4();
 
@@ -217,8 +235,8 @@ Future<Response> _logSet(Request request) async {
     "WHERE ws.id = '$setId'::uuid",
   );
 
-  // Si la serie se completó y hay peso y reps, verificar si es un récord personal
-  if (completed && weightKg != null && reps != null && reps > 0) {
+  // Solo guardar PR si el set tiene peso real y reps reales (evita PRs fantasma con weight=0)
+  if (completed && weightKg != null && weightKg > 0 && reps != null && reps > 0) {
     await _checkAndSavePR(userId, exerciseId, weightKg, reps, sessionId);
   }
 
@@ -655,7 +673,14 @@ Future<Response> _cancelSession(Request request, String sessionId) async {
   );
   if (check.isEmpty) return notFound('Sesión no encontrada o ya finalizada');
 
-  // Eliminar sets primero (cascade debería cubrirlo, pero por seguridad)
+  // Eliminar PRs fantasma (weight=0) generados en esta sesión y desvincular el resto
+  await db.execute(
+    "DELETE FROM personal_records WHERE session_id = '$sessionId'::uuid AND weight_kg = 0",
+  );
+  await db.execute(
+    "UPDATE personal_records SET session_id = NULL WHERE session_id = '$sessionId'::uuid",
+  );
+  // workout_sets tiene ON DELETE CASCADE, pero lo borramos explícitamente
   await db.execute(
     "DELETE FROM workout_sets WHERE session_id = '$sessionId'::uuid",
   );

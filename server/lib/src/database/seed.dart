@@ -46,9 +46,9 @@ Future<void> seedDev(Connection conn) async {
   print('[Seed] Limpiando datos de ejercicios anteriores...');
   await conn.execute('DELETE FROM hiit_sessions');
   await conn.execute('DELETE FROM lift_submissions');
+  // personal_records y workout_sets referencian exercises (FK sin CASCADE) — borrar primero
   await conn.execute('DELETE FROM personal_records');
   await conn.execute('DELETE FROM workout_sets');
-  await conn.execute('DELETE FROM workout_sessions');
   await conn.execute('DELETE FROM routine_day_exercises');
   await conn.execute('DELETE FROM exercises');
 

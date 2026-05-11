@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/events_service.dart';
 
 Color _typeColor(String type) => switch (type.toLowerCase()) {
@@ -92,6 +94,63 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     }
   }
 
+  Future<void> _openMaps(String location) async {
+    final encoded = Uri.encodeComponent(location);
+    await _openUrl('https://maps.google.com/?q=$encoded');
+  }
+
+  Future<void> _deactivate() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.bgSecondary,
+        title: const Text('Desactivar evento',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'El evento dejará de ser visible para los usuarios. ¿Continuar?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Desactivar',
+                style: TextStyle(color: AppColors.accentSecondary)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await _service.deactivateEvent(widget.id);
+      if (mounted) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: AppColors.accentSecondary),
+        );
+      }
+    }
+  }
+
+  void _showEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditEventSheet(
+        event: _event!,
+        service: _service,
+        onSaved: (updated) => setState(() => _event = {..._event!, ...updated}),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -133,10 +192,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final interestCount = event['interestCount'] as int? ?? 0;
     final maxP = event['maxParticipants'] as int?;
     final regUrl = event['registrationUrl'] as String?;
+    final location = event['location'] as String?;
     final dateStr = _formatEventDate(
       event['eventDate'] as String?,
       event['eventTime'] as String?,
     );
+
+    final authUser = context.read<AuthProvider>().user;
+    final role = authUser?['role'] as String? ?? '';
+    final userId = authUser?['id'] as String? ?? '';
+    final creatorId = event['creatorId'] as String? ?? '';
+    final canEdit = role == 'admin' || userId == creatorId;
+    final canDeactivate = role == 'admin';
 
     return Scaffold(
       backgroundColor: context.colorBgPrimary,
@@ -150,6 +217,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               onPressed: () => context.pop(),
             ),
             actions: [
+              if (canEdit)
+                IconButton(
+                  icon: Icon(Icons.edit_rounded, color: context.colorTextSecondary),
+                  onPressed: _showEditSheet,
+                ),
+              if (canDeactivate)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: AppColors.accentSecondary),
+                  onPressed: _deactivate,
+                ),
               IconButton(
                 icon: _togglingInterest
                     ? const SizedBox(
@@ -224,13 +302,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     label: 'Fecha',
                     value: dateStr.isNotEmpty ? dateStr : 'Por confirmar',
                   ),
-                  if (event['location'] != null) ...[
+                  if (location != null) ...[
                     const SizedBox(height: 10),
                     _InfoRow(
                       icon: Icons.location_on_rounded,
                       color: AppColors.accentSecondary,
                       label: 'Lugar',
-                      value: event['location'] as String,
+                      value: location,
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 48),
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.accentPrimary,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 28),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => _openMaps(location),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 13),
+                        label: const Text('Abrir en Google Maps',
+                            style: TextStyle(fontSize: 12)),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 10),
@@ -338,6 +432,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       );
 }
 
+// ── Static widgets ────────────────────────────────────────────────────────────
+
 class _Banner extends StatelessWidget {
   final Color color;
   const _Banner({required this.color});
@@ -408,5 +504,460 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// ── Edit sheet ────────────────────────────────────────────────────────────────
 
+class _EditEventSheet extends StatefulWidget {
+  final Map<String, dynamic> event;
+  final EventsService service;
+  final void Function(Map<String, dynamic>) onSaved;
+  const _EditEventSheet({
+    required this.event,
+    required this.service,
+    required this.onSaved,
+  });
 
+  @override
+  State<_EditEventSheet> createState() => _EditEventSheetState();
+}
+
+class _EditEventSheetState extends State<_EditEventSheet> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _locationCtrl;
+  late final TextEditingController _descriptionCtrl;
+  late final TextEditingController _maxParticipantsCtrl;
+  late final TextEditingController _regUrlCtrl;
+  late String _type;
+  DateTime? _selectedDate;
+  String? _selectedTime;
+  bool _saving = false;
+
+  static const _types = [
+    'competencia',
+    'torneo',
+    'charla',
+    'conferencia',
+    'taller',
+    'jornada',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.event;
+    _titleCtrl = TextEditingController(text: e['title'] as String? ?? '');
+    _locationCtrl = TextEditingController(text: e['location'] as String? ?? '');
+    _descriptionCtrl =
+        TextEditingController(text: e['description'] as String? ?? '');
+    _maxParticipantsCtrl = TextEditingController(
+      text: e['maxParticipants'] != null ? '${e['maxParticipants']}' : '',
+    );
+    _regUrlCtrl =
+        TextEditingController(text: e['registrationUrl'] as String? ?? '');
+    final rawType = ((e['type'] as String?) ?? 'charla').toLowerCase();
+    _type = _types.contains(rawType) ? rawType : 'charla';
+    final dateStr = e['eventDate'] as String?;
+    if (dateStr != null) {
+      try {
+        _selectedDate = DateTime.parse(dateStr);
+      } catch (_) {}
+    }
+    final timeStr = e['eventTime'] as String?;
+    if (timeStr != null && timeStr.length >= 5) {
+      _selectedTime = timeStr.substring(0, 5);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _locationCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _maxParticipantsCtrl.dispose();
+    _regUrlCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.accentPrimary,
+            surface: AppColors.bgSecondary,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    TimeOfDay? initial;
+    if (_selectedTime != null) {
+      final parts = _selectedTime!.split(':');
+      initial = TimeOfDay(
+        hour: int.tryParse(parts[0]) ?? 0,
+        minute: int.tryParse(parts[1]) ?? 0,
+      );
+    }
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial ?? TimeOfDay.now(),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.accentPrimary,
+            surface: AppColors.bgSecondary,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedTime =
+            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    if (_titleCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El título es obligatorio'),
+          backgroundColor: AppColors.accentSecondary,
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final updated = await widget.service.updateEvent(
+        widget.event['id'] as String,
+        title: _titleCtrl.text.trim(),
+        type: _type,
+        eventDate: _selectedDate != null
+            ? '${_selectedDate!.year}-'
+                '${_selectedDate!.month.toString().padLeft(2, '0')}-'
+                '${_selectedDate!.day.toString().padLeft(2, '0')}'
+            : null,
+        eventTime: _selectedTime,
+        location: _locationCtrl.text.trim(),
+        description: _descriptionCtrl.text.trim(),
+        maxParticipants: int.tryParse(_maxParticipantsCtrl.text.trim()),
+        registrationUrl: _regUrlCtrl.text.trim(),
+      );
+      widget.onSaved(updated);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.accentSecondary,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final months = [
+      '', 'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+      'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+    ];
+    final dateLabel = _selectedDate != null
+        ? '${_selectedDate!.day} ${months[_selectedDate!.month]} ${_selectedDate!.year}'
+        : 'Seleccionar fecha';
+    final timeLabel = _selectedTime ?? 'Seleccionar hora (opcional)';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, ctrl) => Container(
+        decoration: BoxDecoration(
+          color: context.colorBgSecondary,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.colorTextMuted,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Editar evento',
+                      style: TextStyle(
+                        color: context.colorTextPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (_saving)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accentPrimary),
+                    )
+                  else
+                    TextButton(
+                      onPressed: _save,
+                      child: const Text(
+                        'Guardar',
+                        style: TextStyle(
+                            color: AppColors.accentPrimary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                controller: ctrl,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                children: [
+                  _SheetLabel('Título'),
+                  _SheetField(controller: _titleCtrl, hint: 'Título del evento'),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Tipo'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: context.colorBgTertiary,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.colorBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _type,
+                        isExpanded: true,
+                        dropdownColor: context.colorBgSecondary,
+                        style: TextStyle(
+                            color: context.colorTextPrimary, fontSize: 14),
+                        onChanged: (v) => setState(() => _type = v!),
+                        items: _types
+                            .map((t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text(
+                                    t[0].toUpperCase() + t.substring(1),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Fecha'),
+                  _PickerButton(
+                    icon: Icons.calendar_today_rounded,
+                    label: dateLabel,
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: 12),
+                  _SheetLabel('Hora'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PickerButton(
+                          icon: Icons.access_time_rounded,
+                          label: timeLabel,
+                          onTap: _pickTime,
+                        ),
+                      ),
+                      if (_selectedTime != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(Icons.clear_rounded,
+                              color: context.colorTextMuted, size: 20),
+                          onPressed: () => setState(() => _selectedTime = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Lugar'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SheetField(
+                          controller: _locationCtrl,
+                          hint: 'ej: Gimnasio UBB, Concepción',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Tooltip(
+                        message: 'Buscar en Maps',
+                        child: InkWell(
+                          onTap: () => launchUrl(
+                            Uri.parse('https://maps.google.com'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: context.colorBgTertiary,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: context.colorBorder),
+                            ),
+                            child: const Icon(Icons.map_outlined,
+                                color: AppColors.accentPrimary, size: 22),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Descripción (opcional)'),
+                  _SheetField(
+                    controller: _descriptionCtrl,
+                    hint: 'Detalles del evento...',
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Cupos máximos (opcional)'),
+                  _SheetField(
+                    controller: _maxParticipantsCtrl,
+                    hint: 'ej: 50',
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('URL de inscripción (opcional)'),
+                  _SheetField(
+                    controller: _regUrlCtrl,
+                    hint: 'https://...',
+                    keyboardType: TextInputType.url,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sheet helpers (file-private) ──────────────────────────────────────────────
+
+class _SheetLabel extends StatelessWidget {
+  final String text;
+  const _SheetLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: context.colorTextSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+}
+
+class _SheetField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+  final TextInputType keyboardType;
+  const _SheetField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: context.colorTextMuted, fontSize: 14),
+          filled: true,
+          fillColor: context.colorBgTertiary,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: context.colorBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: context.colorBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.accentPrimary),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      );
+}
+
+class _PickerButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _PickerButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: context.colorBgTertiary,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: context.colorBorder),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: context.colorTextMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: context.colorTextPrimary,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}

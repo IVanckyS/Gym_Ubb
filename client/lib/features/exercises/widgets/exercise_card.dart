@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/body_map_data.dart';
@@ -113,22 +114,30 @@ class ExerciseCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        _Badge(
-                          label: _muscleGroupLabel(muscleGroup),
-                          color: muscleColor,
+                        Flexible(
+                          child: _Badge(
+                            label: _muscleGroupLabel(muscleGroup),
+                            color: muscleColor,
+                          ),
                         ),
                         const SizedBox(width: 6),
-                        _Badge(
-                          label: _difficultyLabel(difficulty),
-                          color: difficultyColor,
+                        Flexible(
+                          child: _Badge(
+                            label: _difficultyLabel(difficulty),
+                            color: difficultyColor,
+                          ),
                         ),
                         if (isIsometric) ...[
                           const SizedBox(width: 6),
-                          const _Badge(label: 'Isométrico', color: _isometricColor),
+                          const Flexible(
+                            child: _Badge(label: 'Isométrico', color: _isometricColor),
+                          ),
                         ],
                         if (isCalistenia) ...[
                           const SizedBox(width: 6),
-                          const _Badge(label: 'Calistenia', color: _calisteniaColor),
+                          const Flexible(
+                            child: _Badge(label: 'Calistenia', color: _calisteniaColor),
+                          ),
                         ],
                       ],
                     ),
@@ -146,12 +155,15 @@ class ExerciseCard extends StatelessWidget {
     }
 
     final muscleEmoji = _muscleEmoji(muscleGroup);
+    final imageUrl = exercise['imageUrl'] as String?;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
     // Full card
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(12),
@@ -171,19 +183,27 @@ class ExerciseCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Muscle group visual
-            Container(
-              height: 60,
+            // Exercise image or muscle group emoji fallback
+            SizedBox(
+              height: 56,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: muscleColor.withAlpha(18),
-              ),
-              child: Center(
-                child: Text(muscleEmoji, style: const TextStyle(fontSize: 30)),
-              ),
+              child: hasImage
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _EmojiPlaceholder(
+                        emoji: muscleEmoji,
+                        color: muscleColor,
+                      ),
+                      errorWidget: (_, __, ___) => _EmojiPlaceholder(
+                        emoji: muscleEmoji,
+                        color: muscleColor,
+                      ),
+                    )
+                  : _EmojiPlaceholder(emoji: muscleEmoji, color: muscleColor),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -254,6 +274,21 @@ class ExerciseCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EmojiPlaceholder extends StatelessWidget {
+  final String emoji;
+  final Color color;
+
+  const _EmojiPlaceholder({required this.emoji, required this.color});
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        color: color.withAlpha(18),
+        child: Center(
+          child: Text(emoji, style: const TextStyle(fontSize: 28)),
+        ),
+      );
 }
 
 class _Badge extends StatelessWidget {

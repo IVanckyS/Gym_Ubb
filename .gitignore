@@ -6,6 +6,9 @@ dockerfiles/
 prompt_*.md
 *.html
 
+# Scripts locales de utilidad (pueden contener API keys)
+tools/
+
 # Secretos — NUNCA subir a git
 .env
 .env.*

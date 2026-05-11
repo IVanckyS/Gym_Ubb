@@ -1,7 +1,10 @@
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../hiit/data/hiit_models.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -29,6 +32,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   List<Map<String, dynamic>> _related = [];
   bool _loading = true;
   String? _error;
+  bool _headerImageError = false;
   WebViewController? _videoController;
 
   @override
@@ -62,6 +66,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _headerImageError = false;
     });
     try {
       final exercise = await _service.getExercise(widget.id);
@@ -259,18 +264,25 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                if (imageUrl != null && imageUrl.isNotEmpty)
+                if (imageUrl != null && imageUrl.isNotEmpty && !_headerImageError)
                   Image.network(
-                    '${ApiConstants.baseUrl}$imageUrl',
+                    imageUrl.startsWith('http') ? imageUrl : '${ApiConstants.baseUrl}$imageUrl',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, e2, st) => const SizedBox.shrink(),
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : Container(color: muscleColor.withValues(alpha: 0.15)),
+                    errorBuilder: (context, err, st) {
+                      WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => setState(() => _headerImageError = true));
+                      return const SizedBox.shrink();
+                    },
                   ),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: imageUrl != null && imageUrl.isNotEmpty
+                      colors: (imageUrl != null && imageUrl.isNotEmpty && !_headerImageError)
                           ? [Colors.black54, Colors.black87]
                           : [
                               muscleColor.withValues(alpha: 0.6),
@@ -286,7 +298,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        if (imageUrl == null || imageUrl.isEmpty)
+                        if (imageUrl == null || imageUrl.isEmpty || _headerImageError)
                           Text(emoji, style: const TextStyle(fontSize: 36)),
                       const SizedBox(height: 8),
                       Text(
@@ -300,36 +312,31 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           _Badge(label: displayGroup, color: muscleColor),
-                          const SizedBox(width: 8),
                           _Badge(
                             label: difficultyLabel,
                             color: difficultyColor,
                           ),
-                          if (isIsometric) ...[
-                            const SizedBox(width: 8),
+                          if (isIsometric)
                             const _Badge(
                               label: 'Isométrico',
                               color: Color(0xFF818cf8),
                             ),
-                          ],
-                          if (isCalistenia) ...[
-                            const SizedBox(width: 8),
+                          if (isCalistenia)
                             const _Badge(
                               label: 'Calistenia',
                               color: Color(0xFF4ECDC4),
                             ),
-                          ],
-                          if (equipment != null && equipment.isNotEmpty) ...[
-                            const SizedBox(width: 8),
+                          if (equipment != null && equipment.isNotEmpty)
                             _Badge(
                               label: equipment,
                               color: AppColors.textSecondary,
                               small: true,
                             ),
-                          ],
                         ],
                       ),
                     ],
@@ -789,8 +796,16 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
   late bool _isCalistenia;
   late bool _isRankeable;
 
+  File? _mainImage;
+  final List<TextEditingController> _muscleCtrl = [];
+  final List<TextEditingController> _instructionCtrl = [];
+  final List<File?> _newStepImages = [];
+  late List<String> _existingStepUrls;
+
   bool _saving = false;
+  String? _saveStep;
   String? _error;
+  final _picker = ImagePicker();
 
   static const _muscleOptions = [
     ('pecho', 'Pecho'), ('espalda', 'Espalda'), ('piernas', 'Piernas'),
@@ -820,6 +835,20 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
     _repsCtrl = TextEditingController(text: e['defaultReps'] as String? ?? '8-12');
     final durSec = e['defaultDurationSeconds'] as int? ?? 30;
     _durationCtrl = TextEditingController(text: '$durSec');
+
+    final muscles = (e['muscles'] as List?)?.cast<String>() ?? [];
+    for (final m in muscles) _muscleCtrl.add(TextEditingController(text: m));
+
+    final instructions = (e['instructions'] as List?)?.cast<String>() ?? [];
+    for (final inst in instructions) {
+      _instructionCtrl.add(TextEditingController(text: inst));
+      _newStepImages.add(null);
+    }
+    if (_instructionCtrl.isEmpty) {
+      _instructionCtrl.add(TextEditingController());
+      _newStepImages.add(null);
+    }
+    _existingStepUrls = (e['stepImages'] as List?)?.cast<String>() ?? [];
   }
 
   @override
@@ -827,13 +856,34 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
     _nameCtrl.dispose(); _descCtrl.dispose(); _equipmentCtrl.dispose();
     _videoUrlCtrl.dispose(); _safetyCtrl.dispose();
     _repsCtrl.dispose(); _durationCtrl.dispose();
+    for (final c in _muscleCtrl) c.dispose();
+    for (final c in _instructionCtrl) c.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickMainImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked != null && mounted) setState(() => _mainImage = File(picked.path));
+  }
+
+  Future<void> _pickStepImage(int index) async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (picked != null && mounted) {
+      setState(() {
+        while (_newStepImages.length <= index) _newStepImages.add(null);
+        _newStepImages[index] = File(picked.path);
+      });
+    }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _saving = true; _error = null; });
+    setState(() { _saving = true; _saveStep = 'Guardando...'; _error = null; });
     try {
+      final muscles = _muscleCtrl.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList();
+      final instructions = _instructionCtrl.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList();
+      final id = widget.exercise['id'] as String;
+
       final body = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
@@ -843,9 +893,9 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
         'defaultSets': _defaultSets,
         'videoUrl': _videoUrlCtrl.text.trim(),
         'safetyNotes': _safetyCtrl.text.trim(),
-        'exerciseType': _isIsometric
-            ? 'isometrico'
-            : (_isCalistenia ? 'calistenia' : 'dinamico'),
+        'muscles': muscles,
+        'instructions': instructions,
+        'exerciseType': _isIsometric ? 'isometrico' : (_isCalistenia ? 'calistenia' : 'dinamico'),
         'isRankeable': _isRankeable,
       };
       if (_isIsometric) {
@@ -853,15 +903,28 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
       } else {
         body['defaultReps'] = _repsCtrl.text.trim();
       }
-      await widget.service.updateExercise(widget.exercise['id'] as String, body);
+      await widget.service.updateExercise(id, body);
+
+      if (_mainImage != null) {
+        setState(() => _saveStep = 'Subiendo imagen principal...');
+        await widget.service.uploadImage(id, _mainImage!, type: 'main');
+      }
+      for (int i = 0; i < _newStepImages.length; i++) {
+        if (_newStepImages[i] != null) {
+          setState(() => _saveStep = 'Subiendo imagen paso ${i + 1}...');
+          await widget.service.uploadImage(id, _newStepImages[i]!, type: 'step_$i');
+        }
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() { _saving = false; _error = e.toString(); });
+      setState(() { _saving = false; _saveStep = null; _error = e.toString(); });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final existingImageUrl = widget.exercise['imageUrl'] as String?;
     return Dialog(
       backgroundColor: context.colorBgSecondary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -869,22 +932,18 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 600,
-          maxHeight: MediaQuery.of(context).size.height * 0.88,
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
               child: Row(
                 children: [
                   Expanded(
                     child: Text('Editar ejercicio',
-                        style: TextStyle(
-                            color: context.colorTextPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700)),
+                        style: TextStyle(color: context.colorTextPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: AppColors.textMuted),
@@ -902,7 +961,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nombre
+                      // ── Nombre ──────────────────────────────────────────
                       _label('Nombre *'),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -912,46 +971,30 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
                       ),
                       const SizedBox(height: 12),
-                      // Grupo muscular + Dificultad
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label('Grupo muscular'),
-                                const SizedBox(height: 6),
-                                _dropdown<String>(
-                                  value: _muscleGroup,
-                                  items: _muscleOptions
-                                      .map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)))
-                                      .toList(),
-                                  onChanged: (v) => setState(() => _muscleGroup = v!),
-                                ),
-                              ],
-                            ),
+                      // ── Grupo + Dificultad ───────────────────────────────
+                      Row(children: [
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          _label('Grupo muscular'),
+                          const SizedBox(height: 6),
+                          _dropdown<String>(
+                            value: _muscleGroup,
+                            items: _muscleOptions.map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2))).toList(),
+                            onChanged: (v) => setState(() => _muscleGroup = v!),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label('Dificultad'),
-                                const SizedBox(height: 6),
-                                _dropdown<String>(
-                                  value: _difficulty,
-                                  items: _difficultyOptions
-                                      .map((d) => DropdownMenuItem(value: d.$1, child: Text(d.$2)))
-                                      .toList(),
-                                  onChanged: (v) => setState(() => _difficulty = v!),
-                                ),
-                              ],
-                            ),
+                        ])),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          _label('Dificultad'),
+                          const SizedBox(height: 6),
+                          _dropdown<String>(
+                            value: _difficulty,
+                            items: _difficultyOptions.map((d) => DropdownMenuItem(value: d.$1, child: Text(d.$2))).toList(),
+                            onChanged: (v) => setState(() => _difficulty = v!),
                           ),
-                        ],
-                      ),
+                        ])),
+                      ]),
                       const SizedBox(height: 12),
-                      // Equipo
+                      // ── Equipo ───────────────────────────────────────────
                       _label('Equipo'),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -960,52 +1003,29 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         decoration: _deco('Ej. Barra + Banco'),
                       ),
                       const SizedBox(height: 12),
-                      // Series + Reps/Duración
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label('Series'),
-                                const SizedBox(height: 6),
-                                _dropdown<int>(
-                                  value: _defaultSets,
-                                  items: [2, 3, 4, 5]
-                                      .map((n) => DropdownMenuItem(value: n, child: Text('$n')))
-                                      .toList(),
-                                  onChanged: (v) => setState(() => _defaultSets = v!),
-                                ),
-                              ],
-                            ),
+                      // ── Series + Reps/Duración ───────────────────────────
+                      Row(children: [
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          _label('Series'),
+                          const SizedBox(height: 6),
+                          _dropdown<int>(
+                            value: _defaultSets,
+                            items: [2, 3, 4, 5].map((n) => DropdownMenuItem(value: n, child: Text('$n'))).toList(),
+                            onChanged: (v) => setState(() => _defaultSets = v!),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label(_isIsometric ? 'Duración (seg)' : 'Reps'),
-                                const SizedBox(height: 6),
-                                if (_isIsometric)
-                                  TextFormField(
-                                    controller: _durationCtrl,
-                                    style: TextStyle(color: context.colorTextPrimary),
-                                    decoration: _deco('Ej. 30'),
-                                    keyboardType: TextInputType.number,
-                                  )
-                                else
-                                  TextFormField(
-                                    controller: _repsCtrl,
-                                    style: TextStyle(color: context.colorTextPrimary),
-                                    decoration: _deco('Ej. 8-12'),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ])),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          _label(_isIsometric ? 'Duración (seg)' : 'Reps'),
+                          const SizedBox(height: 6),
+                          if (_isIsometric)
+                            TextFormField(controller: _durationCtrl, style: TextStyle(color: context.colorTextPrimary), decoration: _deco('Ej. 30'), keyboardType: TextInputType.number)
+                          else
+                            TextFormField(controller: _repsCtrl, style: TextStyle(color: context.colorTextPrimary), decoration: _deco('Ej. 8-12')),
+                        ])),
+                      ]),
                       const SizedBox(height: 12),
-                      // Descripción
+                      // ── Descripción ──────────────────────────────────────
                       _label('Descripción'),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -1014,8 +1034,176 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         decoration: _deco('Descripción general del ejercicio...'),
                         maxLines: 3,
                       ),
+                      const SizedBox(height: 16),
+                      // ── Imagen principal ─────────────────────────────────
+                      _label('Imagen principal'),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _pickMainImage,
+                        child: Container(
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: context.colorBgTertiary,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: _mainImage != null
+                              ? Stack(fit: StackFit.expand, children: [
+                                  ClipRRect(borderRadius: BorderRadius.circular(10),
+                                      child: Image.file(_mainImage!, fit: BoxFit.cover)),
+                                  Positioned(top: 6, right: 6,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _mainImage = null),
+                                        child: Container(decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                            padding: const EdgeInsets.all(4),
+                                            child: const Icon(Icons.close, color: Colors.white, size: 16)),
+                                      )),
+                                ])
+                              : existingImageUrl != null && existingImageUrl.isNotEmpty
+                                  ? Stack(fit: StackFit.expand, children: [
+                                      ClipRRect(borderRadius: BorderRadius.circular(10),
+                                          child: CachedNetworkImage(
+                                            imageUrl: existingImageUrl.startsWith('http') ? existingImageUrl : '${ApiConstants.baseUrl}$existingImageUrl',
+                                            fit: BoxFit.cover,
+                                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                          )),
+                                      Positioned(bottom: 8, right: 8,
+                                          child: Container(decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              child: const Text('Cambiar', style: TextStyle(color: Colors.white, fontSize: 11)))),
+                                    ])
+                                  : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                      const Icon(Icons.add_photo_alternate_outlined, color: AppColors.textMuted, size: 32),
+                                      const SizedBox(height: 6),
+                                      Text('Seleccionar imagen', style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
+                                    ]),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // ── Músculos trabajados ──────────────────────────────
+                      Row(children: [
+                        Expanded(child: _label('Músculos trabajados')),
+                        TextButton.icon(
+                          onPressed: () => setState(() => _muscleCtrl.add(TextEditingController())),
+                          icon: const Icon(Icons.add, size: 16, color: AppColors.accentPrimary),
+                          label: const Text('Agregar', style: TextStyle(color: AppColors.accentPrimary, fontSize: 12)),
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      ..._muscleCtrl.asMap().entries.map((entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(children: [
+                          Expanded(child: TextFormField(
+                            controller: entry.value,
+                            style: TextStyle(color: context.colorTextPrimary),
+                            decoration: _deco('Ej. Pectoral mayor'),
+                          )),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => setState(() { entry.value.dispose(); _muscleCtrl.removeAt(entry.key); }),
+                            child: const Icon(Icons.remove_circle_outline, color: AppColors.accentSecondary, size: 22),
+                          ),
+                        ]),
+                      )),
+                      if (_muscleCtrl.isEmpty)
+                        Text('Sin músculos especificados', style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
+                      const SizedBox(height: 16),
+                      // ── Instrucciones paso a paso ────────────────────────
+                      Row(children: [
+                        Expanded(child: _label('Pasos / instrucciones')),
+                        TextButton.icon(
+                          onPressed: () => setState(() { _instructionCtrl.add(TextEditingController()); _newStepImages.add(null); }),
+                          icon: const Icon(Icons.add, size: 16, color: AppColors.accentPrimary),
+                          label: const Text('Paso', style: TextStyle(color: AppColors.accentPrimary, fontSize: 12)),
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      ..._instructionCtrl.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final newImg = i < _newStepImages.length ? _newStepImages[i] : null;
+                        final existingUrl = i < _existingStepUrls.length ? _existingStepUrls[i] : '';
+                        final hasExisting = existingUrl.isNotEmpty;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: context.colorBgTertiary,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Container(
+                                width: 24, height: 24,
+                                margin: const EdgeInsets.only(right: 8, top: 2),
+                                decoration: BoxDecoration(color: AppColors.accentPrimary.withValues(alpha: 0.15), shape: BoxShape.circle),
+                                child: Center(child: Text('${i + 1}', style: const TextStyle(color: AppColors.accentPrimary, fontSize: 12, fontWeight: FontWeight.w700))),
+                              ),
+                              Expanded(child: TextFormField(
+                                controller: entry.value,
+                                style: TextStyle(color: context.colorTextPrimary, fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText: 'Describe el paso ${i + 1}...',
+                                  hintStyle: TextStyle(color: context.colorTextMuted),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  isDense: true,
+                                ),
+                                maxLines: 2,
+                              )),
+                              if (_instructionCtrl.length > 1)
+                                GestureDetector(
+                                  onTap: () => setState(() {
+                                    entry.value.dispose();
+                                    _instructionCtrl.removeAt(i);
+                                    if (i < _newStepImages.length) _newStepImages.removeAt(i);
+                                    if (i < _existingStepUrls.length) _existingStepUrls.removeAt(i);
+                                  }),
+                                  child: const Padding(padding: EdgeInsets.only(left: 6),
+                                      child: Icon(Icons.remove_circle_outline, color: AppColors.accentSecondary, size: 18)),
+                                ),
+                            ]),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              // Thumbnail: new pick > existing URL
+                              if (newImg != null) ...[
+                                ClipRRect(borderRadius: BorderRadius.circular(6),
+                                    child: Image.file(newImg, width: 60, height: 44, fit: BoxFit.cover)),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => setState(() { _newStepImages[i] = null; }),
+                                  child: const Text('Quitar', style: TextStyle(color: AppColors.accentSecondary, fontSize: 11)),
+                                ),
+                                const Spacer(),
+                              ] else if (hasExisting) ...[
+                                ClipRRect(borderRadius: BorderRadius.circular(6),
+                                    child: CachedNetworkImage(
+                                      imageUrl: existingUrl.startsWith('http') ? existingUrl : '${ApiConstants.baseUrl}$existingUrl',
+                                      width: 60, height: 44, fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                    )),
+                                const SizedBox(width: 8),
+                                const Spacer(),
+                              ] else
+                                const Spacer(),
+                              TextButton.icon(
+                                onPressed: () => _pickStepImage(i),
+                                icon: const Icon(Icons.image_outlined, size: 14, color: AppColors.textSecondary),
+                                label: Text(
+                                  (newImg != null || hasExisting) ? 'Cambiar imagen' : 'Adjuntar imagen',
+                                  style: TextStyle(color: context.colorTextSecondary, fontSize: 11),
+                                ),
+                                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                              ),
+                            ]),
+                          ]),
+                        );
+                      }),
                       const SizedBox(height: 12),
-                      // Video URL
+                      // ── Video URL ────────────────────────────────────────
                       _label('URL Video (YouTube)'),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -1024,7 +1212,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         decoration: _deco('https://youtube.com/watch?v=...'),
                       ),
                       const SizedBox(height: 12),
-                      // Notas de seguridad
+                      // ── Notas de seguridad ───────────────────────────────
                       _label('Notas de seguridad'),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -1034,33 +1222,25 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         maxLines: 2,
                       ),
                       const SizedBox(height: 16),
-                      // Toggle isométrico
+                      // ── Toggles ──────────────────────────────────────────
                       _buildToggle(
                         value: _isIsometric,
-                        onChanged: (v) => setState(() {
-                          _isIsometric = v;
-                          if (v) _isCalistenia = false;
-                        }),
+                        onChanged: (v) => setState(() { _isIsometric = v; if (v) _isCalistenia = false; }),
                         color: const Color(0xFF818cf8),
                         icon: Icons.timer_outlined,
                         title: 'Ejercicio isométrico',
                         subtitle: 'Se mide por tiempo (segundos), no por kg y repeticiones',
                       ),
                       const SizedBox(height: 12),
-                      // Toggle calistenia
                       _buildToggle(
                         value: _isCalistenia,
-                        onChanged: (v) => setState(() {
-                          _isCalistenia = v;
-                          if (v) _isIsometric = false;
-                        }),
+                        onChanged: (v) => setState(() { _isCalistenia = v; if (v) _isIsometric = false; }),
                         color: const Color(0xFF4ECDC4),
                         icon: Icons.accessibility_new_rounded,
                         title: 'Ejercicio de peso corporal',
                         subtitle: 'Calistenia: el volumen incluye el peso corporal + lastre opcional',
                       ),
                       const SizedBox(height: 12),
-                      // Toggle rankeable
                       _buildToggle(
                         value: _isRankeable,
                         onChanged: (v) => setState(() => _isRankeable = v),
@@ -1071,9 +1251,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 10),
-                        Text(_error!,
-                            style: const TextStyle(
-                                color: AppColors.accentSecondary, fontSize: 12)),
+                        Text(_error!, style: const TextStyle(color: AppColors.accentSecondary, fontSize: 12)),
                       ],
                       const SizedBox(height: 20),
                       FilledButton(
@@ -1081,17 +1259,15 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accentPrimary,
                           minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _saving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Text('Guardar cambios',
-                                style: TextStyle(fontWeight: FontWeight.w600)),
+                            ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                                const SizedBox(width: 12),
+                                Text(_saveStep ?? 'Guardando...', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                              ])
+                            : const Text('Guardar cambios', style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),
@@ -1116,70 +1292,46 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
       decoration: BoxDecoration(
         color: value ? color.withValues(alpha: 0.08) : context.colorBgTertiary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: value ? color.withValues(alpha: 0.3) : context.colorBorder),
+        border: Border.all(color: value ? color.withValues(alpha: 0.3) : context.colorBorder),
       ),
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
         activeThumbColor: color,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        title: Row(
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(title,
-                style: TextStyle(
-                    color: context.colorTextPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500)),
-          ],
-        ),
-        subtitle: Text(subtitle,
-            style: TextStyle(color: context.colorTextMuted, fontSize: 11)),
+        title: Row(children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(color: context.colorTextPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+        ]),
+        subtitle: Text(subtitle, style: TextStyle(color: context.colorTextMuted, fontSize: 11)),
       ),
     );
   }
 
   Widget _label(String text) => Text(text,
-      style: TextStyle(
-          color: context.colorTextSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600));
+      style: TextStyle(color: context.colorTextSecondary, fontSize: 12, fontWeight: FontWeight.w600));
 
   InputDecoration _deco(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: context.colorTextMuted),
         filled: true,
         fillColor: context.colorBgTertiary,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       );
 
-  Widget _dropdown<T>({
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
+  Widget _dropdown<T>({required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T?> onChanged}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: context.colorBgTertiary,
-        borderRadius: BorderRadius.circular(10),
-      ),
+      decoration: BoxDecoration(color: context.colorBgTertiary, borderRadius: BorderRadius.circular(10)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
-          value: value,
-          items: items,
-          onChanged: onChanged,
+          value: value, items: items, onChanged: onChanged,
           dropdownColor: context.colorBgSecondary,
           style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: AppColors.textMuted),
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
         ),
       ),
     );
