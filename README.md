@@ -204,40 +204,108 @@ Flujo de registro:
 
 ### Requisitos previos
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (^3.11)
-- Android Studio con emulador, o dispositivo físico Android
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — incluye Docker Compose
+- [Flutter SDK ≥ 3.11](https://docs.flutter.dev/get-started/install)
+- Android Studio con un emulador configurado, **o** dispositivo físico Android con USB Debugging activo
 
-### 1. Clonar y configurar variables de entorno
+---
+
+### 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/IVanckyS/Gym_Ubb.git
 cd Gym_Ubb
-cp .env.example .env
-# Editar .env con los valores reales
 ```
 
-### 2. Levantar backend
+---
+
+### 2. Variables de entorno
+
+El archivo `.env` es **opcional en desarrollo** — todos los servicios tienen valores por defecto y el servidor arranca sin él.
+
+Si quieres SMTP real o Cloudflare R2, copia la plantilla y rellena solo lo que necesites:
+
+```bash
+cp .env.example .env
+# Editar .env con tus valores
+```
+
+| Variable | Default dev | Necesaria para |
+|---|---|---|
+| `DB_*` | `gym_ubb_dev` / `devpassword123` | — (tiene default) |
+| `JWT_SECRET` | valor de ejemplo incluido | — (tiene default) |
+| `SMTP_*` | vacío | Envío real de emails OTP |
+| `R2_*` | vacío | Subir imágenes a Cloudflare (sin esto usa almacenamiento local) |
+
+> **Sin SMTP configurado:** el código OTP se imprime en los logs del servidor en lugar de enviarse por correo. Ver sección de logs más abajo.
+
+---
+
+### 3. Levantar el backend
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
-curl http://localhost:8080/health   # debe responder {"status":"ok"}
 ```
 
-### 3. Correr la app Flutter
+Verifica que el servidor esté listo:
+
+```bash
+curl http://localhost:8080/health
+# Respuesta esperada: {"status":"ok"}
+```
+
+La primera vez tarda ~2 minutos en construir la imagen Dart. Los siguientes arranques son instantáneos.
+
+---
+
+### 4. Correr la app Flutter
+
+#### Opción A — Emulador Android (Android Studio)
 
 ```bash
 cd client
-
-# Emulador Android
 flutter run --dart-define=API_URL=http://10.0.2.2:8080
+```
 
-# Dispositivo físico vía adb reverse (recomendado)
+#### Opción B — Dispositivo físico por cable (USB)
+
+```bash
+cd client
 adb reverse tcp:8080 tcp:8080
 flutter run --dart-define=API_URL=http://localhost:8080
 ```
 
-### Credenciales de desarrollo
+#### Opción C — Dispositivo físico por WiFi (Wireless Debugging)
+
+> Requiere Android 11+ y que el teléfono esté en la misma red WiFi que el PC.
+
+```bash
+# 1. Agregar platform-tools al PATH (solo necesario en la sesión actual)
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools
+# En Windows PowerShell:
+# $env:PATH += ";$env:LOCALAPPDATA\Android\Sdk\platform-tools"
+
+# 2. En el teléfono: Ajustes → Opciones del desarrollador → Wireless Debugging
+#    → "Emparejar dispositivo con código" → anota IP:puerto y código PIN
+
+adb pair 192.168.X.X:XXXXX   # ingresar el código PIN cuando lo pida
+
+# 3. Conectar al puerto de depuración (distinto al de emparejamiento)
+adb connect 192.168.X.X:YYYYY
+
+# 4. Tunelizar el puerto del servidor al teléfono
+adb -s 192.168.X.X:YYYYY reverse tcp:8080 tcp:8080
+
+# 5. Correr la app
+cd client
+flutter run --dart-define=API_URL=http://localhost:8080 -d 192.168.X.X:YYYYY
+```
+
+---
+
+### 5. Iniciar sesión
+
+La base de datos se siembra automáticamente con un usuario administrador:
 
 | Campo | Valor |
 |---|---|
@@ -249,38 +317,40 @@ flutter run --dart-define=API_URL=http://localhost:8080
 
 ## Variables de entorno
 
-Ver `.env.example` para referencia completa. Variables principales:
-
-```
-RUNMODE=development  PORT=8080
-DB_HOST=postgres  DB_PORT=5432  DB_NAME=gym_ubb_dev  DB_USER=...  DB_PASSWORD=...
-REDIS_HOST=redis  REDIS_PORT=6379
-JWT_SECRET=secreto_minimo_32_caracteres  JWT_AUDIENCE=gym-ubb
-SMTP_HOST=smtp.gmail.com  SMTP_PORT=587  SMTP_USER=...  SMTP_PASSWORD=...
-ALLOWED_ORIGIN=*
-```
-
-> Si se omite SMTP, el código OTP aparece en los logs: `docker compose -f docker-compose.dev.yml logs -f server`
+Ver `.env.example` para la referencia completa con instrucciones de configuración SMTP (Gmail / Mailtrap).
 
 ---
 
 ## Comandos útiles
 
 ```bash
-# Logs del servidor
+# Ver logs del servidor (útil para ver el código OTP cuando no hay SMTP)
 docker compose -f docker-compose.dev.yml logs -f server
 
-# Reconstruir servidor tras cambios en pubspec.yaml
+# Reconstruir servidor tras cambios en pubspec.yaml o Dockerfile
 docker compose -f docker-compose.dev.yml build --no-cache server
 docker compose -f docker-compose.dev.yml up -d server
 
-# Reiniciar BD desde cero
+# Reiniciar la base de datos desde cero (borra todos los datos)
 docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d
 
-# Acceder a PostgreSQL
+# Consola PostgreSQL
 docker exec -it gym_ubb-postgres-1 psql -U gym_ubb_user -d gym_ubb_dev
 ```
+
+---
+
+## Solución de problemas comunes
+
+| Problema | Causa probable | Solución |
+|---|---|---|
+| `curl /health` no responde | Servidor aún iniciando | Esperar ~2 min la primera vez; ver logs |
+| App no conecta en emulador | URL incorrecta | Usar `http://10.0.2.2:8080`, no `localhost` |
+| App no conecta en dispositivo físico | Puerto no tunelizado | Ejecutar `adb reverse tcp:8080 tcp:8080` antes de `flutter run` |
+| "Error de conexión" en login | Backend caído o Redis no listo | `docker compose -f docker-compose.dev.yml up -d` |
+| Código OTP no llega al correo | SMTP no configurado | Normal — buscar el código en los logs del servidor |
+| Imágenes de ejercicios no cargan | R2 no configurado | Normal — las imágenes usan almacenamiento local en `/uploads/` |
 
 ---
 
