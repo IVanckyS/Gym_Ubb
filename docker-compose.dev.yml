@@ -26,7 +26,7 @@ services:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     ports:
-      - "6379:6379"        # Acceso directo para Redis Insight, etc.
+      - "16379:6379"       # Acceso directo para Redis Insight, etc. (6379 excluido por Hyper-V)
     volumes:
       - redis_dev_data:/data
     restart: unless-stopped
@@ -60,9 +60,11 @@ services:
     volumes:
       - ./server:/app                    # Monta fuente para edición en vivo
       - server_dart_tool:/app/.dart_tool # Caché de pub separado del host
+      - server_uploads:/uploads          # Imágenes subidas — persisten entre reinicios
     restart: unless-stopped
 
 volumes:
   postgres_dev_data:
   redis_dev_data:
   server_dart_tool:
+  server_uploads:

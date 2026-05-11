@@ -99,6 +99,31 @@ class ArticlesService {
     return (data['article'] as Map<String, dynamic>?) ?? data;
   }
 
+  Future<Map<String, dynamic>> updateArticle(
+    String id, {
+    String? title,
+    String? category,
+    String? content,
+    String? excerpt,
+    List<String>? tags,
+    String? bibliography,
+    bool? publish,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateArticle(id)}');
+    final body = <String, dynamic>{
+      if (title != null) 'title': title,
+      if (category != null) 'category': category,
+      if (content != null) 'content': content,
+      if (excerpt != null) 'excerpt': excerpt,
+      if (tags != null) 'tags': tags,
+      if (bibliography != null) 'bibliography': bibliography,
+      if (publish != null) 'publish': publish,
+    };
+    final res = await http.patch(uri, headers: await _authHeaders(), body: jsonEncode(body));
+    final data = _unwrap(res);
+    return (data['article'] as Map<String, dynamic>?) ?? data;
+  }
+
   Future<void> deactivateArticle(String id) async {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.deactivateArticle(id)}');
     final res = await http.patch(uri, headers: await _authHeaders());

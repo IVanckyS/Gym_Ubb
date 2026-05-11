@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:postgres/postgres.dart';
 import 'package:uuid/uuid.dart';
 import '../database/connection.dart';
 import '../middleware/auth_middleware.dart';
+import '../services/storage_service.dart';
 import '../utils/response.dart';
 
 final _uuid = Uuid();
@@ -222,8 +222,8 @@ Future<Response> _createExercise(Request request) async {
       'Dificultad inválida. Válidas: ${_validDifficulties.join(', ')}',
     );
   }
-  if (!['dinamico', 'isometrico'].contains(exerciseType)) {
-    return badRequest('Tipo de ejercicio inválido. Válidos: dinamico, isometrico');
+  if (!['dinamico', 'isometrico', 'calistenia'].contains(exerciseType)) {
+    return badRequest('Tipo de ejercicio inválido. Válidos: dinamico, isometrico, calistenia');
   }
 
   final id = _uuid.v4();
@@ -313,8 +313,8 @@ Future<Response> _updateExercise(Request request, String id) async {
 
   if (body.containsKey('exerciseType')) {
     final exerciseType = (body['exerciseType'] as String? ?? 'dinamico').trim().toLowerCase();
-    if (!['dinamico', 'isometrico'].contains(exerciseType)) {
-      return badRequest('Tipo de ejercicio inválido. Válidos: dinamico, isometrico');
+    if (!['dinamico', 'isometrico', 'calistenia'].contains(exerciseType)) {
+      return badRequest('Tipo de ejercicio inválido. Válidos: dinamico, isometrico, calistenia');
     }
     setClauses.add('exercise_type = \$$idx');
     params.add(exerciseType);
@@ -479,14 +479,17 @@ Future<Response> _uploadImage(Request request, String id) async {
     return badRequest('Formato no soportado. Usa PNG, JPG, GIF o WEBP');
   }
 
-  // Crear directorio de uploads
-  final uploadDir = Directory('/uploads/exercises/$id');
-  await uploadDir.create(recursive: true);
+  final mimeType = const {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+  }[ext] ?? 'image/png';
 
   final fileId = _uuid.v4();
-  final savedPath = '${uploadDir.path}/$fileId.$ext';
-  await File(savedPath).writeAsBytes(fileBytes);
-  final publicUrl = '/uploads/exercises/$id/$fileId.$ext';
+  final key = 'exercises/$id/$fileId.$ext';
+  final publicUrl = await StorageService.instance.upload(key, fileBytes, mimeType);
 
   // Actualizar DB según el tipo
   if (type == 'main') {

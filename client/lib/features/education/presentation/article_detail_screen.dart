@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/articles_service.dart';
 
 Color _categoryColor(String key) => switch (key) {
@@ -75,6 +77,56 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  Future<void> _deactivate() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.bgSecondary,
+        title: const Text('Desactivar artículo',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'El artículo dejará de ser visible para los usuarios. ¿Continuar?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Desactivar',
+                style: TextStyle(color: AppColors.accentSecondary)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await _service.deactivateArticle(widget.id);
+      if (mounted) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
+        );
+      }
+    }
+  }
+
+  void _showEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditArticleSheet(
+        article: _article!,
+        service: _service,
+        onSaved: (updated) => setState(() => _article = {..._article!, ...updated}),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -128,6 +180,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final tags = (article['tags'] as List?)?.cast<String>() ?? [];
     final bibliography = article['bibliography'] as String?;
 
+    final authUser = context.read<AuthProvider>().user;
+    final role = authUser?['role'] as String? ?? '';
+    final userId = authUser?['id'] as String? ?? '';
+    final authorId = author?['id'] as String? ?? '';
+    final canEdit = role == 'admin' || userId == authorId;
+    final canDeactivate = role == 'admin';
+
     return Scaffold(
       backgroundColor: context.colorBgPrimary,
       body: CustomScrollView(
@@ -140,6 +199,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               onPressed: () => context.pop(),
             ),
             actions: [
+              if (canEdit)
+                IconButton(
+                  icon: Icon(Icons.edit_rounded, color: context.colorTextSecondary),
+                  onPressed: _showEditSheet,
+                ),
+              if (canDeactivate)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: AppColors.accentSecondary),
+                  onPressed: _deactivate,
+                ),
               IconButton(
                 icon: _togglingFav
                     ? const SizedBox(
@@ -230,7 +300,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
                   // Tags
                   if (tags.isNotEmpty) ...[
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
@@ -305,6 +375,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   }
 }
 
+// ── Static widgets ──────────────────────────────────────────────────────────
+
 class _HeaderBanner extends StatelessWidget {
   final Color color;
   const _HeaderBanner({required this.color});
@@ -330,7 +402,7 @@ class _MetaChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: context.colorTextMuted),
-        SizedBox(width: 4),
+        const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(color: context.colorTextMuted, fontSize: 13),
@@ -340,6 +412,307 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
+// ── Edit sheet ───────────────────────────────────────────────────────────────
 
+class _EditArticleSheet extends StatefulWidget {
+  final Map<String, dynamic> article;
+  final ArticlesService service;
+  final void Function(Map<String, dynamic>) onSaved;
+  const _EditArticleSheet({
+    required this.article,
+    required this.service,
+    required this.onSaved,
+  });
 
+  @override
+  State<_EditArticleSheet> createState() => _EditArticleSheetState();
+}
 
+class _EditArticleSheetState extends State<_EditArticleSheet> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _excerptCtrl;
+  late final TextEditingController _contentCtrl;
+  late final TextEditingController _tagsCtrl;
+  late final TextEditingController _bibliographyCtrl;
+  late String _category;
+  late bool _publish;
+  bool _saving = false;
+
+  static const _categories = [
+    ('biomecanica', 'Biomecánica'),
+    ('nutricion', 'Nutrición'),
+    ('prevencion', 'Prevención'),
+    ('pausas_activas', 'Pausas activas'),
+    ('recuperacion', 'Recuperación'),
+    ('salud_mental', 'Salud mental'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.article;
+    _titleCtrl = TextEditingController(text: a['title'] as String? ?? '');
+    _excerptCtrl = TextEditingController(text: a['excerpt'] as String? ?? '');
+    _contentCtrl = TextEditingController(text: a['content'] as String? ?? '');
+    final tags = (a['tags'] as List?)?.cast<String>() ?? [];
+    _tagsCtrl = TextEditingController(text: tags.join(', '));
+    _bibliographyCtrl = TextEditingController(text: a['bibliography'] as String? ?? '');
+    final rawCat = (a['category'] as String? ?? 'biomecanica').toLowerCase();
+    const validCats = ['biomecanica', 'nutricion', 'prevencion', 'pausas_activas', 'recuperacion', 'salud_mental'];
+    _category = validCats.contains(rawCat) ? rawCat : 'biomecanica';
+    _publish = a['isPublished'] as bool? ?? false;
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _excerptCtrl.dispose();
+    _contentCtrl.dispose();
+    _tagsCtrl.dispose();
+    _bibliographyCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_titleCtrl.text.trim().isEmpty || _contentCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Título y contenido son obligatorios'),
+          backgroundColor: AppColors.accentSecondary,
+        ),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final tags = _tagsCtrl.text
+          .split(',')
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+      final updated = await widget.service.updateArticle(
+        widget.article['id'] as String,
+        title: _titleCtrl.text.trim(),
+        category: _category,
+        content: _contentCtrl.text.trim(),
+        excerpt: _excerptCtrl.text.trim(),
+        tags: tags,
+        bibliography: _bibliographyCtrl.text.trim(),
+        publish: _publish,
+      );
+      widget.onSaved(updated);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.accentSecondary,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, ctrl) => Container(
+        decoration: BoxDecoration(
+          color: context.colorBgSecondary,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.colorTextMuted,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Editar artículo',
+                      style: TextStyle(
+                        color: context.colorTextPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (_saving)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accentPrimary),
+                    )
+                  else
+                    TextButton(
+                      onPressed: _save,
+                      child: const Text(
+                        'Guardar',
+                        style: TextStyle(
+                            color: AppColors.accentPrimary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView(
+                controller: ctrl,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                children: [
+                  _SheetLabel('Título'),
+                  _SheetField(controller: _titleCtrl, hint: 'Título del artículo'),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Categoría'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: context.colorBgTertiary,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.colorBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _category,
+                        isExpanded: true,
+                        dropdownColor: context.colorBgSecondary,
+                        style: TextStyle(
+                            color: context.colorTextPrimary, fontSize: 14),
+                        onChanged: (v) => setState(() => _category = v!),
+                        items: _categories
+                            .map((c) => DropdownMenuItem(
+                                  value: c.$1,
+                                  child: Text(c.$2),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Extracto (opcional)'),
+                  _SheetField(
+                    controller: _excerptCtrl,
+                    hint: 'Breve resumen del artículo',
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Contenido'),
+                  _SheetField(
+                    controller: _contentCtrl,
+                    hint: 'Contenido completo...',
+                    maxLines: 10,
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Etiquetas (separadas por coma)'),
+                  _SheetField(
+                    controller: _tagsCtrl,
+                    hint: 'ej: espalda, postura, biomecánica',
+                  ),
+                  const SizedBox(height: 16),
+                  _SheetLabel('Bibliografía (opcional)'),
+                  _SheetField(
+                    controller: _bibliographyCtrl,
+                    hint: 'Referencias y fuentes...',
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Publicado',
+                          style: TextStyle(
+                              color: context.colorTextPrimary, fontSize: 14),
+                        ),
+                      ),
+                      Switch(
+                        value: _publish,
+                        onChanged: (v) => setState(() => _publish = v),
+                        activeThumbColor: AppColors.accentPrimary,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sheet helpers (file-private) ─────────────────────────────────────────────
+
+class _SheetLabel extends StatelessWidget {
+  final String text;
+  const _SheetLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: context.colorTextSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+}
+
+class _SheetField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+  const _SheetField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
+        maxLines: maxLines,
+        style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: context.colorTextMuted, fontSize: 14),
+          filled: true,
+          fillColor: context.colorBgTertiary,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: context.colorBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: context.colorBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.accentPrimary),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      );
+}

@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
+import '../../../shared/services/exercises_service.dart';
 import '../../../shared/services/workout_service.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -43,9 +47,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   bool _restActive = false;
   int _restTotal = 90;
 
-  // Sonidos countdown
-  final AudioPlayer _loopPlayer = AudioPlayer();
-  final AudioPlayer _finalPlayer = AudioPlayer();
+  // Sonidos countdown — una instancia por reproducción, dispose al terminar
+  // (ReleaseMode compartido deja el MediaPlayer de Android en STOPPED y falla al reiniciar)
 
   // Estado de inputs por set: key = "$exerciseId-$setNumber"
   final Map<String, TextEditingController> _weightControllers = {};
@@ -72,8 +75,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   void dispose() {
     _sessionTimer.cancel();
     _restTimer?.cancel();
-    _loopPlayer.dispose();
-    _finalPlayer.dispose();
     for (final c in _weightControllers.values) c.dispose();
     for (final c in _repsControllers.values) c.dispose();
     super.dispose();
@@ -155,14 +156,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
     _restTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
+      // Actualizar estado (síncrono — sin llamadas async aquí)
       setState(() {
         if (_restRemaining > 0) {
           _restRemaining--;
-          // Sonido cada segundo cuando quedan 10 o menos
-          if (_restRemaining > 0 && _restRemaining <= 10) {
-            _playCountdownBeep();
-          } else if (_restRemaining == 0) {
-            _playFinishSound();
+          if (_restRemaining == 0) {
             _restActive = false;
             t.cancel();
           }
@@ -171,23 +169,38 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           t.cancel();
         }
       });
+      // Sonidos FUERA de setState para evitar race conditions
+      if (_restRemaining > 0 && _restRemaining <= 5) {
+        _playCountdownBeep();
+      } else if (_restRemaining == 0) {
+        _playFinishSound();
+      }
     });
   }
 
   void _stopRestTimer() {
     _restTimer?.cancel();
-    _loopPlayer.stop();
     setState(() { _restActive = false; _restRemaining = 0; });
   }
 
   Future<void> _playCountdownBeep() async {
-    await _loopPlayer.stop();
-    await _loopPlayer.play(AssetSource('sounds/loop.mp3'));
+    final p = AudioPlayer();
+    try {
+      await p.play(AssetSource('sounds/loop.mp3'));
+      p.onPlayerComplete.first.then((_) => p.dispose());
+    } catch (_) {
+      p.dispose();
+    }
   }
 
   Future<void> _playFinishSound() async {
-    await _loopPlayer.stop();
-    await _finalPlayer.play(AssetSource('sounds/final.mp3'));
+    final p = AudioPlayer();
+    try {
+      await p.play(AssetSource('sounds/final.mp3'));
+      p.onPlayerComplete.first.then((_) => p.dispose());
+    } catch (_) {
+      p.dispose();
+    }
   }
 
   Future<void> _toggleSet(String exerciseId, int setNumber, int restSeconds) async {
@@ -628,6 +641,16 @@ class _ExerciseCard extends StatefulWidget {
 class _ExerciseCardState extends State<_ExerciseCard> {
   bool _expanded = true;
 
+  void _showInfo(BuildContext context) {
+    final exerciseId = widget.exercise['exerciseId'] as String;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ExerciseInfoSheet(exerciseId: exerciseId),
+    );
+  }
+
   static const _muscleColors = {
     'pecho': Color(0xFF3b82f6),
     'espalda': Color(0xFF8b5cf6),
@@ -704,6 +727,15 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Botón info
+                  GestureDetector(
+                    onTap: () => _showInfo(context),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: Icon(Icons.info_outline, color: AppColors.textMuted, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   // Progreso series
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1202,8 +1234,318 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
+// ── Exercise Info Bottom Sheet ────────────────────────────────────────────────
 
+class _ExerciseInfoSheet extends StatefulWidget {
+  const _ExerciseInfoSheet({required this.exerciseId});
+  final String exerciseId;
 
+  @override
+  State<_ExerciseInfoSheet> createState() => _ExerciseInfoSheetState();
+}
 
+class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
+  final _service = ExercisesService();
+  Map<String, dynamic>? _exercise;
+  bool _loading = true;
+
+  static const _muscleColors = {
+    'pecho': Color(0xFF3b82f6),
+    'espalda': Color(0xFF8b5cf6),
+    'piernas': Color(0xFF22c55e),
+    'hombros': Color(0xFFf97316),
+    'brazos': Color(0xFFec4899),
+    'core': Color(0xFFeab308),
+    'gluteos': Color(0xFFef4444),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _service.getExercise(widget.exerciseId);
+      if (mounted) setState(() { _exercise = data; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, controller) {
+        return Container(
+          decoration: BoxDecoration(
+            color: context.colorBgSecondary,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 4),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              if (_loading)
+                const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.accentPrimary)))
+              else if (_exercise == null)
+                const Expanded(child: Center(child: Text('No se pudo cargar la info', style: TextStyle(color: AppColors.textMuted))))
+              else
+                Expanded(child: _buildContent(controller)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openFullImage(String url) {
+    final fullUrl = url.startsWith('http') ? url : '${ApiConstants.baseUrl}$url';
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: CachedNetworkImage(
+                    imageUrl: fullUrl,
+                    fit: BoxFit.contain,
+                    errorWidget: (ctx, url, err) => const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(ScrollController controller) {
+    final e = _exercise!;
+    final name = e['name'] as String? ?? '';
+    final muscleGroup = e['muscleGroup'] as String? ?? '';
+    final difficulty = e['difficulty'] as String? ?? '';
+    final equipment = e['equipment'] as String?;
+    final description = e['description'] as String?;
+    final muscles = (e['muscles'] as List?)?.cast<String>() ?? [];
+    final instructions = (e['instructions'] as List?)?.cast<String>() ?? [];
+    final stepImages = (e['stepImages'] as List?)?.cast<String>() ?? [];
+    final imageUrl = e['imageUrl'] as String?;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final videoUrl = e['videoUrl'] as String?;
+    final hasVideo = videoUrl != null && videoUrl.isNotEmpty;
+    final muscleColor = _muscleColors[muscleGroup] ?? AppColors.accentPrimary;
+
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        // Header image (tappable)
+        if (hasImage)
+          GestureDetector(
+            onTap: () => _openFullImage(imageUrl),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl.startsWith('http') ? imageUrl : '${ApiConstants.baseUrl}$imageUrl',
+                height: 160,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorWidget: (ctx, url, err) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        if (hasImage) const SizedBox(height: 14),
+
+        // Name
+        Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+
+        // Badges
+        Wrap(
+          spacing: 8, runSpacing: 6,
+          children: [
+            _InfoBadge(label: _muscleLabel(muscleGroup), color: muscleColor),
+            _InfoBadge(label: _difficultyLabel(difficulty), color: _difficultyColor(difficulty)),
+            if (equipment != null && equipment.isNotEmpty)
+              _InfoBadge(label: equipment, color: AppColors.textMuted, icon: Icons.fitness_center),
+          ],
+        ),
+
+        // Description
+        if (description != null && description.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Descripción', style: TextStyle(color: context.colorTextPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text(description, style: TextStyle(color: context.colorTextSecondary, fontSize: 13, height: 1.5)),
+        ],
+
+        // Muscles
+        if (muscles.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Músculos trabajados', style: TextStyle(color: context.colorTextPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            children: muscles.map((m) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: muscleColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: muscleColor.withValues(alpha: 0.35)),
+              ),
+              child: Text(m, style: TextStyle(color: muscleColor, fontSize: 12, fontWeight: FontWeight.w500)),
+            )).toList(),
+          ),
+        ],
+
+        // Instructions
+        if (instructions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Cómo hacerlo', style: TextStyle(color: context.colorTextPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          ...instructions.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final imgUrl = idx < stepImages.length ? stepImages[idx] : '';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 26, height: 26,
+                    margin: const EdgeInsets.only(right: 10, top: 1),
+                    decoration: BoxDecoration(
+                      color: muscleColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: muscleColor.withValues(alpha: 0.4)),
+                    ),
+                    child: Center(child: Text('${idx + 1}', style: TextStyle(color: muscleColor, fontSize: 12, fontWeight: FontWeight.w700))),
+                  ),
+                  Expanded(
+                    child: Text(entry.value, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+                  ),
+                  if (imgUrl.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _openFullImage(imgUrl),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: CachedNetworkImage(
+                          imageUrl: imgUrl.startsWith('http') ? imgUrl : '${ApiConstants.baseUrl}$imgUrl',
+                          width: 52, height: 52, fit: BoxFit.cover,
+                          errorWidget: (ctx, url, err) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+
+        // Video
+        if (hasVideo) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(videoUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.play_circle_outline, size: 18),
+            label: const Text('Ver video tutorial'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.accentSecondary,
+              side: BorderSide(color: AppColors.accentSecondary.withValues(alpha: 0.5)),
+              minimumSize: const Size.fromHeight(44),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _muscleLabel(String g) => const {
+    'pecho': 'Pecho', 'espalda': 'Espalda', 'piernas': 'Piernas',
+    'hombros': 'Hombros', 'brazos': 'Brazos', 'core': 'Core', 'gluteos': 'Glúteos',
+  }[g] ?? g;
+
+  static String _difficultyLabel(String d) => const {
+    'principiante': 'Principiante', 'intermedio': 'Intermedio', 'avanzado': 'Avanzado',
+  }[d] ?? d;
+
+  static Color _difficultyColor(String d) {
+    switch (d) {
+      case 'principiante': return const Color(0xFF4ECDC4);
+      case 'intermedio':   return const Color(0xFFFFB347);
+      case 'avanzado':     return const Color(0xFFFF6B6B);
+      default:             return AppColors.textMuted;
+    }
+  }
+}
+
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({required this.label, required this.color, this.icon});
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 12),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
 
 

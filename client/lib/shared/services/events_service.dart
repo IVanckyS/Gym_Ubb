@@ -102,6 +102,33 @@ class EventsService {
     return (data['event'] as Map<String, dynamic>?) ?? data;
   }
 
+  Future<Map<String, dynamic>> updateEvent(
+    String id, {
+    String? title,
+    String? type,
+    String? eventDate,
+    String? eventTime,
+    String? location,
+    String? description,
+    int? maxParticipants,
+    String? registrationUrl,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateEvent(id)}');
+    final body = <String, dynamic>{
+      if (title != null) 'title': title,
+      if (type != null) 'type': type,
+      if (eventDate != null) 'eventDate': eventDate,
+      if (eventTime != null) 'eventTime': eventTime,
+      if (location != null) 'location': location,
+      if (description != null) 'description': description,
+      if (maxParticipants != null) 'maxParticipants': maxParticipants,
+      if (registrationUrl != null) 'registrationUrl': registrationUrl,
+    };
+    final res = await http.patch(uri, headers: await _authHeaders(), body: jsonEncode(body));
+    final data = _unwrap(res);
+    return (data['event'] as Map<String, dynamic>?) ?? data;
+  }
+
   Future<void> deactivateEvent(String id) async {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.deactivateEvent(id)}');
     final res = await http.patch(uri, headers: await _authHeaders());
