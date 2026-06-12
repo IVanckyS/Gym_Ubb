@@ -39,18 +39,27 @@ Future<void> seedAdminUser(Connection conn) async {
   print('[Seed] Usuario admin creado: $adminEmail / Admin1234');
 }
 
-/// Limpia y resiembra ejercicios completos en cada arranque dev.
+/// Limpia sesiones dev y siembra ejercicios solo si la tabla está vacía.
+/// Preserva exercises (con sus image_url de R2) entre reinicios del servidor.
 Future<void> seedDev(Connection conn) async {
   if (Platform.environment['RUNMODE'] == 'production') return;
 
-  print('[Seed] Limpiando datos de ejercicios anteriores...');
+  print('[Seed] Limpiando datos de sesiones anteriores...');
   await conn.execute('DELETE FROM hiit_sessions');
   await conn.execute('DELETE FROM lift_submissions');
   // personal_records y workout_sets referencian exercises (FK sin CASCADE) — borrar primero
   await conn.execute('DELETE FROM personal_records');
   await conn.execute('DELETE FROM workout_sets');
   await conn.execute('DELETE FROM routine_day_exercises');
-  await conn.execute('DELETE FROM exercises');
+
+  // Sembrar ejercicios solo si la tabla está vacía para preservar image_url subidas a R2
+  final countResult = await conn.execute('SELECT COUNT(*) FROM exercises');
+  final exerciseCount = (countResult.first.toColumnMap()['count'] as int?) ?? 0;
+
+  if (exerciseCount > 0) {
+    print('[Seed] Ejercicios ya existen ($exerciseCount), omitiendo seed para preservar imágenes.');
+    return;
+  }
 
   print('[Seed] Sembrando ${_devExercises.length} ejercicios...');
 

@@ -162,7 +162,7 @@ Future<Response> _getEvent(Request request, String id) async {
 }
 
 Future<Response> _createEvent(Request request) async {
-  final claims = await requireRole(request, 'professor');
+  final claims = await requireRole(request, ['admin', 'professor']);
   final creatorId = claims['sub'] as String;
 
   final body = await parseBody(request);

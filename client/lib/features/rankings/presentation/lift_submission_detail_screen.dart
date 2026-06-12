@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/widgets/youtube_video_card.dart';
 import '../data/lift_submissions_service.dart';
 
 class LiftSubmissionDetailScreen extends StatefulWidget {
@@ -193,57 +194,8 @@ class _LiftSubmissionDetailScreenState
         if (s['videoUrl'] != null) ...[
           _SectionLabel('Video'),
           const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              // Abrir URL en navegador externo
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('URL: ${s['videoUrl']}'),
-                  action: SnackBarAction(label: 'OK', onPressed: () {}),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: context.colorBgSecondary,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentSecondary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.play_circle_outline_rounded,
-                        color: AppColors.accentSecondary, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Ver video',
-                            style: TextStyle(
-                                color: context.colorTextPrimary,
-                                fontWeight: FontWeight.w600)),
-                        Text(s['videoUrl'] as String,
-                            style: TextStyle(
-                                color: context.colorTextMuted, fontSize: 11),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.open_in_new_rounded,
-                      color: context.colorTextMuted, size: 16),
-                ],
-              ),
-            ),
-          ),
+          // YouTube se reproduce inline; otras URLs (Drive, etc.) abren fuera
+          YoutubeVideoCard(videoUrl: s['videoUrl'] as String),
           const SizedBox(height: 16),
         ],
 

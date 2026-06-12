@@ -99,6 +99,28 @@ class ArticlesService {
     return (data['article'] as Map<String, dynamic>?) ?? data;
   }
 
+  /// Sube la imagen de portada del artículo (multipart) y retorna la URL.
+  /// Recibe bytes + nombre para funcionar también en Flutter Web
+  /// (File/fromPath no están soportados en web).
+  Future<String> uploadImage(
+      String articleId, List<int> bytes, String filename) async {
+    final token = await _auth.getAccessToken();
+    final uri = Uri.parse(
+        '${ApiConstants.baseUrl}/api/v1/articles/uploadImage/$articleId');
+    final req = http.MultipartRequest('POST', uri);
+    if (token != null) req.headers['Authorization'] = 'Bearer $token';
+    req.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return (body['data']?['url'] ?? body['url']) as String;
+    }
+    final error = body['error'] as Map<String, dynamic>?;
+    throw ArticlesException(
+        error?['message'] as String? ?? 'Error al subir imagen');
+  }
+
   Future<Map<String, dynamic>> updateArticle(
     String id, {
     String? title,

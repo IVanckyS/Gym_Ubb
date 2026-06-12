@@ -3,6 +3,8 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:uuid/uuid.dart';
 import '../database/connection.dart';
 import '../middleware/auth_middleware.dart';
+import '../services/storage_service.dart';
+import '../utils/multipart.dart';
 import '../utils/response.dart';
 
 final _uuid = Uuid();
@@ -27,6 +29,9 @@ Router get articlesHandler {
 
   // PATCH /api/v1/articles/deactivate/:id
   router.patch('/deactivate/<id>', _deactivateArticle);
+
+  // POST /api/v1/articles/uploadImage/:id  (multipart, campo "file")
+  router.post('/uploadImage/<id>', _uploadImage);
 
   // POST /api/v1/articles/:id/favorite — toggle favorito
   router.post('/<id>/favorite', _toggleFavorite);
@@ -187,7 +192,7 @@ Future<Response> _getArticle(Request request, String id) async {
 }
 
 Future<Response> _createArticle(Request request) async {
-  final claims = await requireRole(request, 'professor');
+  final claims = await requireRole(request, ['admin', 'professor']);
   final authorId = claims['sub'] as String;
 
   final body = await parseBody(request);
@@ -386,4 +391,58 @@ Future<Response> _myFavorites(Request request) async {
   }).toList();
 
   return jsonOk({'articles': articles});
+}
+
+/// POST /uploadImage/<id>
+/// Recibe multipart/form-data con campo "file" (imagen) y actualiza
+/// image_url del artículo. Mismo flujo que la subida de ejercicios:
+/// guarda en R2 (o /uploads/ local sin R2) bajo articles/<id>/.
+Future<Response> _uploadImage(Request request, String id) async {
+  await requireRole(request, ['admin', 'professor']);
+
+  final contentType = request.headers['content-type'] ?? '';
+  if (!contentType.contains('multipart/form-data')) {
+    return badRequest('Se esperaba multipart/form-data');
+  }
+
+  final boundaryMatch = RegExp(r'boundary=(.+)').firstMatch(contentType);
+  if (boundaryMatch == null) return badRequest('Boundary no encontrado');
+  final boundary = boundaryMatch.group(1)!.trim();
+
+  final bodyBytes = await request.read().expand((c) => c).toList();
+  final bodyStr = String.fromCharCodes(bodyBytes);
+
+  final parts = parseMultipart(bodyStr, bodyBytes, boundary);
+  final filePart = parts.firstWhere(
+    (p) => p['name'] == 'file',
+    orElse: () => {},
+  );
+  if (filePart.isEmpty) return badRequest('Campo "file" no encontrado');
+
+  final filename = filePart['filename'] as String? ?? 'image.png';
+  final fileBytes = filePart['bytes'] as List<int>? ?? [];
+  if (fileBytes.isEmpty) return badRequest('Archivo vacío');
+
+  final ext = filename.split('.').last.toLowerCase();
+  final mimeType = kImageMimeTypes[ext];
+  if (mimeType == null) {
+    return badRequest('Formato no soportado. Usa PNG, JPG, GIF o WEBP');
+  }
+
+  final exists = await db.execute(
+    "SELECT id FROM articles WHERE id = '$id'::uuid",
+  );
+  if (exists.isEmpty) return notFound('Artículo no encontrado');
+
+  final fileId = _uuid.v4();
+  final key = 'articles/$id/$fileId.$ext';
+  final publicUrl =
+      await StorageService.instance.upload(key, fileBytes, mimeType);
+
+  await db.execute(
+    "UPDATE articles SET image_url = \$1 WHERE id = '$id'::uuid",
+    parameters: [publicUrl],
+  );
+
+  return jsonOk({'url': publicUrl});
 }

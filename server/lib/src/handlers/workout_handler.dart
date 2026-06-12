@@ -555,14 +555,18 @@ Future<Response> _getCalendar(Request request) async {
   };
 
   final defaultRoutineRes = await db.execute(
-    "SELECT id FROM routines WHERE user_id = '$userId'::uuid "
+    "SELECT id, TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS created_day "
+    "FROM routines WHERE user_id = '$userId'::uuid "
     "AND is_default = true AND is_active = true LIMIT 1",
   );
 
   String? defaultRoutineId;
+  String? routineSinceIso; // antes de esta fecha la rutina no existía
   Set<int> scheduledWeekdays = {};
   if (defaultRoutineRes.isNotEmpty) {
     defaultRoutineId = defaultRoutineRes.first.toColumnMap()['id'] as String?;
+    routineSinceIso =
+        defaultRoutineRes.first.toColumnMap()['created_day'] as String?;
     if (defaultRoutineId != null) {
       final daysRes = await db.execute(
         "SELECT day_name FROM routine_days WHERE routine_id = '$defaultRoutineId'::uuid",
@@ -621,7 +625,10 @@ Future<Response> _getCalendar(Request request) async {
         '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     final wd = d.weekday;
     final isPast = iso.compareTo(todayIso) < 0;
-    final isScheduled = scheduledWeekdays.contains(wd);
+    // Un día solo cuenta como programado desde que la rutina existe:
+    // antes de su creación no puede haber días "perdidos".
+    final isScheduled = scheduledWeekdays.contains(wd) &&
+        (routineSinceIso == null || iso.compareTo(routineSinceIso) >= 0);
 
     final hit = byDay[iso];
     String? out;

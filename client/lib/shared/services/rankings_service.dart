@@ -73,38 +73,33 @@ class RankingsService {
     _unwrap(res);
   }
 
-  /// Calcula coeficiente Wilks localmente.
-  /// [isMale] true = fórmula masculina, false = femenina.
-  static double wilks({
+  /// Calcula puntos DOTS localmente — el estándar moderno de powerlifting
+  /// (reemplazó a Wilks; usado por USPA, WRPF y OpenPowerlifting).
+  /// [lifted] = total SBD en kg. [isMale] true = fórmula masculina.
+  static double dots({
     required double lifted,
     required double bodyWeight,
     required bool isMale,
   }) {
-    double a, b, c, d, e, f;
+    double a, b, c, d, e;
 
     if (isMale) {
-      a = -216.0475144;
-      b = 16.2606339;
-      c = -0.002388645;
-      d = -0.00113732;
-      e = 7.01863e-06;
-      f = -1.291e-08;
+      a = -0.0000010930;
+      b = 0.0007391293;
+      c = -0.1918759221;
+      d = 24.0900756;
+      e = -307.75076;
     } else {
-      a = 594.31747775582;
-      b = -27.23842536447;
-      c = 0.82112226871;
-      d = -0.00930733913;
-      e = 4.731582e-05;
-      f = -9.054e-08;
+      a = -0.0000010706;
+      b = 0.0005158568;
+      c = -0.1126655495;
+      d = 13.6175032;
+      e = -57.96288;
     }
 
     final bw = bodyWeight;
-    final denom = a +
-        b * bw +
-        c * bw * bw +
-        d * bw * bw * bw +
-        e * bw * bw * bw * bw +
-        f * bw * bw * bw * bw * bw;
+    final denom =
+        a * bw * bw * bw * bw + b * bw * bw * bw + c * bw * bw + d * bw + e;
 
     if (denom <= 0) return 0;
     return lifted * 500 / denom;

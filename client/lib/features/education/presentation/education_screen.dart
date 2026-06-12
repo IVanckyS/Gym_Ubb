@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_banner.dart';
@@ -294,8 +296,8 @@ class _ArticlesTabState extends State<_ArticlesTab>
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                             itemCount: _articles.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (ctx, i) =>
-                                _ArticleCard(article: _articles[i]),
+                            itemBuilder: (ctx, i) => _ArticleCard(
+                                article: _articles[i], onChanged: _load),
                           ),
                         ),
         ),
@@ -359,7 +361,8 @@ class _FavoritesTabState extends State<_FavoritesTab>
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         itemCount: _favorites.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (ctx, i) => _ArticleCard(article: _favorites[i]),
+        itemBuilder: (ctx, i) =>
+            _ArticleCard(article: _favorites[i], onChanged: _load),
       ),
     );
   }
@@ -371,7 +374,9 @@ class _FavoritesTabState extends State<_FavoritesTab>
 
 class _ArticleCard extends StatelessWidget {
   final Map<String, dynamic> article;
-  const _ArticleCard({required this.article});
+  // Llamado al volver del detalle: refresca la lista (favoritos, ediciones…)
+  final VoidCallback? onChanged;
+  const _ArticleCard({required this.article, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -383,7 +388,10 @@ class _ArticleCard extends StatelessWidget {
     final isPublished = article['isPublished'] as bool? ?? true;
 
     return GestureDetector(
-      onTap: () => context.push('/education/${article['id']}'),
+      onTap: () async {
+        await context.push('/education/${article['id']}');
+        onChanged?.call();
+      },
       child: Container(
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
@@ -581,6 +589,9 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
   bool _publish = false;
   bool _saving = false;
   String? _error;
+  // Bytes en vez de File: Image.file / fromPath no funcionan en Flutter Web
+  XFile? _pickedImage;
+  Uint8List? _imageBytes;
 
   @override
   void dispose() {
@@ -592,6 +603,22 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (mounted) {
+      setState(() {
+        _pickedImage = picked;
+        _imageBytes = bytes;
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _saving = true; _error = null; });
@@ -601,7 +628,7 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
           .map((t) => t.trim())
           .where((t) => t.isNotEmpty)
           .toList();
-      await widget.service.createArticle(
+      final article = await widget.service.createArticle(
         title: _titleCtrl.text.trim(),
         category: _category,
         content: _contentCtrl.text.trim(),
@@ -610,6 +637,12 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
         bibliography: _bibliographyCtrl.text.trim(),
         publish: _publish,
       );
+      // Subir portada después de crear (mismo flujo que ejercicios)
+      final articleId = article['id'] as String?;
+      if (_imageBytes != null && articleId != null) {
+        await widget.service.uploadImage(
+            articleId, _imageBytes!, _pickedImage?.name ?? 'portada.jpg');
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() { _error = e.toString(); _saving = false; });
@@ -768,6 +801,72 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
                       ),
                       maxLines: 3,
                     ),
+                    const SizedBox(height: 16),
+
+                    // Imagen de portada (igual que en ejercicios)
+                    Text('Imagen de portada (opcional)',
+                        style: TextStyle(
+                            color: context.colorTextSecondary, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    if (_imageBytes != null)
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              _imageBytes!,
+                              width: double.infinity,
+                              height: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: InkWell(
+                              onTap: () => setState(() {
+                                _imageBytes = null;
+                                _pickedImage = null;
+                              }),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close,
+                                    color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      InkWell(
+                        onTap: _pickImage,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: context.colorBgTertiary,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: context.colorBorder),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_photo_alternate_outlined,
+                                  color: AppColors.accentPrimary, size: 28),
+                              const SizedBox(height: 4),
+                              Text('Agregar imagen desde galería',
+                                  style: TextStyle(
+                                      color: context.colorTextSecondary,
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 20),
 
                     // Publish toggle

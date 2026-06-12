@@ -1,18 +1,16 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../hiit/data/hiit_models.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/exercises_service.dart';
+import '../../../shared/widgets/youtube_video_card.dart';
 import '../data/body_map_data.dart';
 import '../widgets/exercise_card.dart';
 
@@ -33,7 +31,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   bool _loading = true;
   String? _error;
   bool _headerImageError = false;
-  WebViewController? _videoController;
 
   @override
   void initState() {
@@ -48,20 +45,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     super.dispose();
   }
 
-  static String? _extractVideoId(String url) {
-    final patterns = [
-      RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})'),
-      RegExp(r'embed/([a-zA-Z0-9_-]{11})'),
-      RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})'),
-      RegExp(r'shorts/([a-zA-Z0-9_-]{11})'),
-    ];
-    for (final re in patterns) {
-      final m = re.firstMatch(url);
-      if (m != null) return m.group(1);
-    }
-    return null;
-  }
-
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -74,18 +57,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       final allExercises = await _service.listExercises(
         muscleGroups: group.isNotEmpty ? {group} : {},
       );
-      // Inicializar WebView si hay videoUrl válida
-      final videoUrl = exercise['videoUrl'] as String?;
-      if (!kIsWeb && videoUrl != null && videoUrl.isNotEmpty) {
-        final videoId = _extractVideoId(videoUrl);
-        if (videoId != null) {
-          _videoController = WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(Colors.black)
-            ..loadRequest(Uri.parse(
-                'https://www.youtube.com/embed/$videoId?rel=0&playsinline=1'));
-        }
-      }
       setState(() {
         _exercise = exercise;
         _related = allExercises
@@ -536,54 +507,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                 if (videoUrl != null && videoUrl.isNotEmpty) ...[
                   _SectionTitle(title: 'Video tutorial'),
                   const SizedBox(height: 10),
-                  if (kIsWeb)
-                    // En web: botón para abrir en YouTube
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final uri = Uri.parse(videoUrl);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      icon: const Icon(Icons.play_circle_outline, size: 20),
-                      label: const Text('Ver video en YouTube'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accentPrimary,
-                        side: const BorderSide(color: AppColors.accentPrimary),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    )
-                  else if (_videoController != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(
-                        height: 210,
-                        child: WebViewWidget(controller: _videoController!),
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: context.colorBgSecondary,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: AppColors.textMuted, size: 18),
-                          SizedBox(width: 8),
-                          Text('URL de video no válida',
-                              style: TextStyle(
-                                  color: AppColors.textMuted, fontSize: 13)),
-                        ],
-                      ),
-                    ),
+                  YoutubeVideoCard(videoUrl: videoUrl),
                   const SizedBox(height: 20),
                 ],
 

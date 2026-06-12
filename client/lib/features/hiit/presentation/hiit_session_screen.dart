@@ -22,13 +22,9 @@ class HiitSessionScreen extends StatefulWidget {
 class _HiitSessionScreenState extends State<HiitSessionScreen> {
   late final HiitTimerEngine _engine;
 
-  // One dedicated AudioPlayer per sound file — avoids shared-state
-  // issues that cause silent failures after the first play.
-  static const _sfxNames = [
-    'prep_beep', 'work_start', 'rest_start', 'round_complete',
-    'countdown_beep', 'final', 'workout_finish',
-  ];
-  late final Map<String, AudioPlayer> _sfx;
+  // Un AudioPlayer nuevo por reproducción: audioplayers pierde sonidos
+  // si se reutiliza el mismo player para reproducciones consecutivas.
+  final Set<AudioPlayer> _activePlayers = {};
 
   HiitPhase _prevPhase = HiitPhase.idle;
   final Set<int> _beepedSeconds = {};
@@ -39,10 +35,6 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
   void initState() {
     super.initState();
     if (!kIsWeb) WakelockPlus.enable();
-    _sfx = {
-      for (final name in _sfxNames)
-        name: AudioPlayer()..setReleaseMode(ReleaseMode.stop),
-    };
     _engine = HiitTimerEngine();
     _engine.addListener(_onStateChange);
     _engine.start(widget.config);
@@ -53,9 +45,10 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     if (!kIsWeb) WakelockPlus.disable();
     _engine.removeListener(_onStateChange);
     _engine.dispose();
-    for (final p in _sfx.values) {
+    for (final p in _activePlayers) {
       p.dispose();
     }
+    _activePlayers.clear();
     super.dispose();
   }
 
@@ -87,12 +80,13 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
       _prevPhase = state.phase;
     }
 
-    // 3-2-1 countdown beeps on all phases (alert at end of work, signal before work)
+    // Countdown 3-2-1 (segundos en ceil, igual que el display): el sonido de
+    // cambio de fase / fin cae en el beat siguiente → cuenta continua sin hueco.
     if (!justChangedPhase &&
         state.phase != HiitPhase.idle &&
         state.phase != HiitPhase.done) {
-      final secs = state.remaining.inSeconds;
-      if (secs <= 3 && secs >= 0 && !_beepedSeconds.contains(secs)) {
+      final secs = (state.remaining.inMilliseconds / 1000).ceil();
+      if (secs <= 3 && secs >= 1 && !_beepedSeconds.contains(secs)) {
         _beepedSeconds.add(secs);
         _play('countdown_beep.mp3');
       }
@@ -101,14 +95,22 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     if (mounted) setState(() {});
   }
 
-  void _play(String filename) {
-    final key = filename.replaceAll('.mp3', '');
-    // AssetSource uses dart:io internally which is unavailable on web.
-    // UrlSource loads via HTTP from the Flutter web asset-serving path.
-    final src = kIsWeb
-        ? UrlSource('assets/sounds/$filename')
-        : AssetSource('sounds/$filename');
-    _sfx[key]?.play(src);
+  Future<void> _play(String filename) async {
+    final p = AudioPlayer();
+    _activePlayers.add(p);
+    void cleanup() {
+      if (_activePlayers.remove(p)) p.dispose();
+    }
+    try {
+      // AssetSource usa dart:io internamente, no disponible en web.
+      final src = kIsWeb
+          ? UrlSource('assets/sounds/$filename')
+          : AssetSource('sounds/$filename');
+      await p.play(src);
+      p.onPlayerComplete.first.then((_) => cleanup());
+    } catch (_) {
+      cleanup();
+    }
   }
 
   Future<void> _showSummary() async {
@@ -239,6 +241,9 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     final totalSecs = state.phaseTotal.inSeconds.clamp(1, 999);
     final elapsedSecs =
         (state.phaseTotal - state.remaining).inSeconds.clamp(0, totalSecs);
+    // Ceil: cuenta N…3-2-1 y cambia de fase justo al agotarse el "1",
+    // sin quedarse un segundo mostrando "0".
+    final secsLeft = (state.remaining.inMilliseconds / 1000).ceil();
 
     final workImageUrl =
         isWork ? (currentEx?.imageUrl?.isNotEmpty == true ? currentEx!.imageUrl : null) : null;
@@ -336,8 +341,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                                   fontWeight: FontWeight.w700,
                                   height: 1,
                                 ),
-                                child: Text(
-                                    state.remaining.inSeconds.toString()),
+                                child: Text(secsLeft.toString()),
                               ),
                             ],
                           ),

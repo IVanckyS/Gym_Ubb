@@ -119,10 +119,10 @@ Future<Response> _getLeaderboard(Request request, String exerciseId) async {
         ? double.tryParse(m['body_weight'].toString())
         : null;
 
-    // Calcular Wilks si hay peso corporal
-    double? wilks;
+    // Calcular DOTS si hay peso corporal
+    double? dots;
     if (bodyWeight != null && bodyWeight > 0) {
-      wilks = _wilksMale(weight, bodyWeight);
+      dots = _dotsMale(weight, bodyWeight);
     }
 
     if (userId == currentUserId) myPosition = i + 1;
@@ -138,7 +138,7 @@ Future<Response> _getLeaderboard(Request request, String exerciseId) async {
       'achievedAt': (m['achieved_at']?.toString() ?? '').split('T').first,
       'isValidated': m['is_validated'],
       'isCurrentUser': userId == currentUserId,
-      'wilks': wilks != null ? double.parse(wilks.toStringAsFixed(2)) : null,
+      'dots': dots != null ? double.parse(dots.toStringAsFixed(2)) : null,
     });
   }
 
@@ -159,16 +159,16 @@ Future<Response> _getLeaderboard(Request request, String exerciseId) async {
       final bodyWeight = m['body_weight'] != null
           ? double.tryParse(m['body_weight'].toString())
           : null;
-      double? wilks;
+      double? dots;
       if (bodyWeight != null && bodyWeight > 0) {
-        wilks = _wilksMale(weight, bodyWeight);
+        dots = _dotsMale(weight, bodyWeight);
       }
       myRecord = {
         'weightKg': weight,
         'reps': m['reps'],
         'achievedAt': (m['achieved_at']?.toString() ?? '').split('T').first,
         'isValidated': m['is_validated'],
-        'wilks': wilks != null ? double.parse(wilks.toStringAsFixed(2)) : null,
+        'dots': dots != null ? double.parse(dots.toStringAsFixed(2)) : null,
       };
     }
   }
@@ -257,26 +257,20 @@ Future<Response> _rejectRecord(Request request, String recordId) async {
   return jsonOk({'message': 'Récord rechazado y eliminado'});
 }
 
-// ── Calculadora Wilks ─────────────────────────────────────────────────────────
+// ── Calculadora DOTS ──────────────────────────────────────────────────────────
 
-/// Coeficiente Wilks para hombres (IPF 2020).
+/// Puntos DOTS (fórmula masculina) — el estándar moderno de powerlifting que
+/// reemplazó a Wilks (USPA/WRPF 2020+, default en OpenPowerlifting).
 /// [lifted] = peso levantado en kg, [bodyWeight] = peso corporal en kg.
-double _wilksMale(double lifted, double bodyWeight) {
-  const a = -216.0475144;
-  const b = 16.2606339;
-  const c = -0.002388645;
-  const d = -0.00113732;
-  const e = 7.01863e-06;
-  const f = -1.291e-08;
+double _dotsMale(double lifted, double bodyWeight) {
+  const a = -0.0000010930;
+  const b = 0.0007391293;
+  const c = -0.1918759221;
+  const d = 24.0900756;
+  const e = -307.75076;
 
   final bw = bodyWeight;
-  final coeff = 500 /
-      (a +
-          b * bw +
-          c * bw * bw +
-          d * bw * bw * bw +
-          e * bw * bw * bw * bw +
-          f * bw * bw * bw * bw * bw);
-
-  return lifted * coeff;
+  final denom = a * bw * bw * bw * bw + b * bw * bw * bw + c * bw * bw + d * bw + e;
+  if (denom <= 0) return 0;
+  return lifted * 500 / denom;
 }

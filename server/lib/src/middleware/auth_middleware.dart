@@ -67,6 +67,9 @@ Future<Map<String, dynamic>> requireRole(
   final claims = await requireAuth(request);
   final userRole = claims['role'] as String?;
 
+  // El admin tiene acceso total: pasa cualquier verificación de rol
+  if (userRole == 'admin') return claims;
+
   final roles = allowedRoles is List<String>
       ? allowedRoles
       : [allowedRoles as String];

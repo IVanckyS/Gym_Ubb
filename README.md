@@ -1,4 +1,4 @@
-# GymUBB
+﻿# GymUBB
 
 App móvil institucional para el gimnasio de la Universidad del Bío-Bío. Permite a estudiantes, profesores y funcionarios gestionar rutinas, registrar sesiones de entrenamiento, consultar rankings, acceder a contenido educativo y mucho más.
 
@@ -181,7 +181,7 @@ Flujo de registro:
 | Historial: calendario mensual (completado/parcial/perdido/libre) | ✅ | ✅ |
 | Exportar historial PDF (récords + medidas, respeta kg/lbs) | — | ✅ |
 | Rankings: leaderboard por ejercicio/reps | ✅ | ✅ |
-| Rankings: calculadora Wilks | — | ✅ |
+| Rankings: calculadora DOTS (total SBD) | — | ✅ |
 | Rankings: postular levantamiento con video | ✅ | ✅ |
 | Rankings: validación admin (aprobar/rechazar) | ✅ | ✅ |
 | Educación: catálogo artículos, favoritos, crear | ✅ | ✅ |
