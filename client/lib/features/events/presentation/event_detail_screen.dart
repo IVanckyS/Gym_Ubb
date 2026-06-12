@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/events_service.dart';
+import '../../../shared/widgets/location_search_field.dart';
 
 Color _typeColor(String type) => switch (type.toLowerCase()) {
       'competencia' || 'torneo' => const Color(0xFFFF6B6B),
@@ -89,14 +90,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri == null) return;
+    // No usar canLaunchUrl como guard: en Android 11+ devuelve false si el
+    // manifest no declara el intent y el botón falla en silencio.
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) throw Exception('launch failed');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
     }
   }
 
   Future<void> _openMaps(String location) async {
     final encoded = Uri.encodeComponent(location);
-    await _openUrl('https://maps.google.com/?q=$encoded');
+    // URL oficial de Google Maps (abre la app en Android si está instalada)
+    await _openUrl('https://www.google.com/maps/search/?api=1&query=$encoded');
   }
 
   Future<void> _deactivate() async {
@@ -799,36 +811,11 @@ class _EditEventSheetState extends State<_EditEventSheet> {
                   ),
                   const SizedBox(height: 16),
                   _SheetLabel('Lugar'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SheetField(
-                          controller: _locationCtrl,
-                          hint: 'ej: Gimnasio UBB, Concepción',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Tooltip(
-                        message: 'Buscar en Maps',
-                        child: InkWell(
-                          onTap: () => launchUrl(
-                            Uri.parse('https://maps.google.com'),
-                            mode: LaunchMode.externalApplication,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: context.colorBgTertiary,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: context.colorBorder),
-                            ),
-                            child: const Icon(Icons.map_outlined,
-                                color: AppColors.accentPrimary, size: 22),
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Búsqueda de dirección exacta (OSM) + verificación en Maps
+                  LocationSearchField(
+                    controller: _locationCtrl,
+                    label: 'Lugar',
+                    hint: 'ej: Gimnasio UBB, Concepción',
                   ),
                   const SizedBox(height: 16),
                   _SheetLabel('Descripción (opcional)'),

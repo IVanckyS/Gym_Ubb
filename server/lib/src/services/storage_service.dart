@@ -17,7 +17,7 @@ class StorageService {
 
   bool get isConfigured {
     final vars = [_accountId, _accessKey, _secretKey, _bucket, _publicUrl];
-    return vars.every((v) => v != null && v!.isNotEmpty);
+    return vars.every((v) => v != null && v.isNotEmpty);
   }
 
   /// Sube [bytes] con la clave [key] y retorna la URL pública.

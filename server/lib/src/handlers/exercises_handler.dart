@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../database/connection.dart';
 import '../middleware/auth_middleware.dart';
 import '../services/storage_service.dart';
+import '../utils/multipart.dart';
 import '../utils/response.dart';
 
 final _uuid = Uuid();
@@ -455,7 +456,7 @@ Future<Response> _uploadImage(Request request, String id) async {
   final bodyStr = String.fromCharCodes(bodyBytes);
 
   // Parsear partes del multipart
-  final parts = _parseMultipart(bodyStr, bodyBytes, boundary);
+  final parts = parseMultipart(bodyStr, bodyBytes, boundary);
   if (parts.isEmpty) return badRequest('No se encontraron partes en el multipart');
 
   final filePart = parts.firstWhere(
@@ -520,49 +521,6 @@ Future<Response> _uploadImage(Request request, String id) async {
   }
 
   return jsonOk({'url': publicUrl, 'type': type});
-}
-
-/// Parsea un multipart/form-data muy básico (campos de texto e imagen)
-List<Map<String, dynamic>> _parseMultipart(
-    String bodyStr, List<int> bodyBytes, String boundary) {
-  final parts = <Map<String, dynamic>>[];
-  final delimiter = '--$boundary';
-  final sections = bodyStr.split(delimiter);
-
-  for (final section in sections) {
-    if (section.trim().isEmpty || section.trim() == '--') continue;
-
-    final headerEnd = section.indexOf('\r\n\r\n');
-    if (headerEnd == -1) continue;
-
-    final headers = section.substring(0, headerEnd);
-    final nameMatch = RegExp(r'name="([^"]+)"').firstMatch(headers);
-    final filenameMatch = RegExp(r'filename="([^"]+)"').firstMatch(headers);
-
-    if (nameMatch == null) continue;
-    final name = nameMatch.group(1)!;
-    final filename = filenameMatch?.group(1);
-
-    if (filename != null) {
-      // Es un archivo binario — buscar los bytes en el buffer original
-      final headerMarker = '--$boundary${section.substring(0, headerEnd + 4)}';
-      final startIdx = bodyStr.indexOf(headerMarker);
-      if (startIdx != -1) {
-        final dataStart = startIdx + headerMarker.length;
-        final endMarker = '\r\n--$boundary';
-        final dataEnd = bodyStr.indexOf(endMarker, dataStart);
-        if (dataEnd != -1) {
-          final fileBytes = bodyBytes.sublist(dataStart, dataEnd);
-          parts.add({'name': name, 'filename': filename, 'bytes': fileBytes});
-        }
-      }
-    } else {
-      // Campo de texto
-      final value = section.substring(headerEnd + 4).replaceAll(RegExp(r'\r\n$'), '');
-      parts.add({'name': name, 'value': value});
-    }
-  }
-  return parts;
 }
 
 /// GET /search?q=press&exclude=<id>&limit=10

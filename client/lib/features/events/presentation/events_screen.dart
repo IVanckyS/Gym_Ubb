@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/events_service.dart';
+import '../../../shared/widgets/location_search_field.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,8 @@ class _UpcomingTabState extends State<_UpcomingTab>
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: _events.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (ctx, i) => _EventCard(event: _events[i]),
+        itemBuilder: (ctx, i) =>
+            _EventCard(event: _events[i], onChanged: _load),
       ),
     );
   }
@@ -253,7 +255,8 @@ class _InterestsTabState extends State<_InterestsTab>
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         itemCount: _events.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (ctx, i) => _EventCard(event: _events[i]),
+        itemBuilder: (ctx, i) =>
+            _EventCard(event: _events[i], onChanged: _load),
       ),
     );
   }
@@ -265,7 +268,9 @@ class _InterestsTabState extends State<_InterestsTab>
 
 class _EventCard extends StatelessWidget {
   final Map<String, dynamic> event;
-  const _EventCard({required this.event});
+  // Llamado al volver del detalle: refresca la lista (interés, ediciones…)
+  final VoidCallback? onChanged;
+  const _EventCard({required this.event, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -280,7 +285,10 @@ class _EventCard extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => context.push('/events/${event['id']}'),
+      onTap: () async {
+        await context.push('/events/${event['id']}');
+        onChanged?.call();
+      },
       child: Container(
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
@@ -694,15 +702,11 @@ class _EventFormSheetState extends State<_EventFormSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Location
-                    TextFormField(
+                    // Location — búsqueda de dirección exacta (OSM) + verificación en Maps
+                    LocationSearchField(
                       controller: _locationCtrl,
-                      style: TextStyle(color: context.colorTextPrimary),
-                      decoration: const InputDecoration(
-                        labelText: 'Lugar (opcional)',
-                        hintText: 'Gimnasio UBB, Aula Magna...',
-                        prefixIcon: Icon(Icons.location_on_outlined),
-                      ),
+                      label: 'Lugar (opcional)',
+                      hint: 'Gimnasio UBB, Aula Magna…',
                     ),
                     const SizedBox(height: 16),
 

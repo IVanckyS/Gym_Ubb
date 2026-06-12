@@ -66,7 +66,7 @@ class _RankingsScreenState extends State<RankingsScreen>
               tabs: [
                 const Tab(text: 'Récords'),
                 const Tab(text: 'Leaderboard'),
-                const Tab(text: 'Wilks'),
+                const Tab(text: 'DOTS'),
                 if (_isPrivileged) const Tab(text: 'Revisar'),
               ],
             ),
@@ -77,7 +77,7 @@ class _RankingsScreenState extends State<RankingsScreen>
               children: [
                 const _RecordsTab(),
                 const _LeaderboardTab(),
-                const _WilksTab(),
+                const _DotsTab(),
                 if (_isPrivileged) const _ReviewTab(),
               ],
             ),
@@ -458,7 +458,7 @@ class _LeaderboardRow extends StatelessWidget {
     final rawKg = (entry['weightKg'] as num?)?.toDouble();
     final weight = rawKg != null ? formatWeight(rawKg, unit) : '--';
     final validated = entry['isValidated'] as bool? ?? false;
-    final wilks = entry['wilks'] as double?;
+    final dots = (entry['dots'] as num?)?.toDouble();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -499,9 +499,9 @@ class _LeaderboardRow extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (wilks != null)
+                if (dots != null)
                   Text(
-                    'Wilks ${wilks.toStringAsFixed(1)}',
+                    'DOTS ${dots.toStringAsFixed(1)}',
                     style: TextStyle(color: context.colorTextMuted, fontSize: 11),
                   ),
               ],
@@ -527,53 +527,64 @@ class _LeaderboardRow extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TAB 2 — CALCULADORA WILKS
+// TAB 2 — CALCULADORA DOTS (total SBD: Sentadilla + Banca + Peso Muerto)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _WilksTab extends StatefulWidget {
-  const _WilksTab();
+class _DotsTab extends StatefulWidget {
+  const _DotsTab();
 
   @override
-  State<_WilksTab> createState() => _WilksTabState();
+  State<_DotsTab> createState() => _DotsTabState();
 }
 
-class _WilksTabState extends State<_WilksTab> {
-  final _lifted = TextEditingController();
+class _DotsTabState extends State<_DotsTab> {
+  final _squat = TextEditingController();
+  final _bench = TextEditingController();
+  final _deadlift = TextEditingController();
   final _bodyWeight = TextEditingController();
   bool _isMale = true;
   double? _result;
+  double _total = 0;
 
   @override
   void dispose() {
-    _lifted.dispose();
+    _squat.dispose();
+    _bench.dispose();
+    _deadlift.dispose();
     _bodyWeight.dispose();
     super.dispose();
   }
 
   void _calculate() {
-    final l = double.tryParse(_lifted.text);
+    final s = double.tryParse(_squat.text) ?? 0;
+    final b = double.tryParse(_bench.text) ?? 0;
+    final d = double.tryParse(_deadlift.text) ?? 0;
     final bw = double.tryParse(_bodyWeight.text);
-    if (l == null || bw == null || l <= 0 || bw <= 0) {
-      setState(() => _result = null);
+    final total = s + b + d;
+    if (bw == null || bw <= 0 || total <= 0) {
+      setState(() { _result = null; _total = 0; });
       return;
     }
     setState(() {
-      _result = RankingsService.wilks(lifted: l, bodyWeight: bw, isMale: _isMale);
+      _total = total;
+      _result =
+          RankingsService.dots(lifted: total, bodyWeight: bw, isMale: _isMale);
     });
   }
 
-  String _category(double wilks) {
-    if (wilks >= 500) return 'Élite mundial';
-    if (wilks >= 400) return 'Élite nacional';
-    if (wilks >= 300) return 'Avanzado';
-    if (wilks >= 200) return 'Intermedio';
+  String _category(double dots) {
+    if (dots >= 500) return 'Clase mundial';
+    if (dots >= 400) return 'Élite';
+    if (dots >= 300) return 'Avanzado';
+    if (dots >= 200) return 'Intermedio';
     return 'Principiante';
   }
 
-  Color _categoryColor(double wilks) {
-    if (wilks >= 400) return const Color(0xFFFFD700);
-    if (wilks >= 300) return AppColors.accentPrimary;
-    if (wilks >= 200) return AppColors.accentGreen;
+  Color _categoryColor(double dots) {
+    if (dots >= 500) return const Color(0xFFFFD700); // oro — clase mundial
+    if (dots >= 400) return const Color(0xFFC0C0C0); // plata — élite
+    if (dots >= 300) return AppColors.accentPrimary;
+    if (dots >= 200) return AppColors.accentGreen;
     return AppColors.textSecondary;
   }
 
@@ -593,8 +604,9 @@ class _WilksTabState extends State<_WilksTab> {
               border: Border.all(color: AppColors.border),
             ),
             child: Text(
-              'El coeficiente Wilks permite comparar el rendimiento entre atletas de diferentes pesos corporales. '
-              'Cuanto mayor el número, mejor el rendimiento relativo al peso corporal.',
+              'DOTS es el puntaje oficial del powerlifting moderno (reemplazó a Wilks). '
+              'Compara tu total SBD —Sentadilla, Banca y Peso Muerto— contra atletas de '
+              'cualquier peso corporal: a mayor puntaje, mejor rendimiento relativo.',
               style: TextStyle(color: context.colorTextSecondary, fontSize: 13, height: 1.5),
             ),
           ),
@@ -620,32 +632,49 @@ class _WilksTabState extends State<_WilksTab> {
           ),
           const SizedBox(height: 20),
 
-          // ── Inputs ──
+          // ── Inputs SBD ──
           Row(
             children: [
               Expanded(
                 child: _CalcField(
-                  controller: _bodyWeight,
-                  label: 'Peso corporal (kg)',
-                  hint: '75.0',
+                  controller: _squat,
+                  label: 'Sentadilla (kg)',
+                  hint: '140',
                   onChanged: (_) => _calculate(),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _CalcField(
-                  controller: _lifted,
-                  label: 'Peso levantado (kg)',
-                  hint: '120.0',
+                  controller: _bench,
+                  label: 'Banca (kg)',
+                  hint: '100',
+                  onChanged: (_) => _calculate(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CalcField(
+                  controller: _deadlift,
+                  label: 'P. Muerto (kg)',
+                  hint: '180',
                   onChanged: (_) => _calculate(),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _CalcField(
+            controller: _bodyWeight,
+            label: 'Peso corporal (kg)',
+            hint: '75.0',
+            onChanged: (_) => _calculate(),
+          ),
           const SizedBox(height: 28),
 
           // ── Resultado ──
           if (_result != null) ...[
+            // La tarjeta toma el color de la categoría alcanzada
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -654,25 +683,32 @@ class _WilksTabState extends State<_WilksTab> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.accentPrimary.withValues(alpha: 0.15),
+                    _categoryColor(_result!).withValues(alpha: 0.18),
                     AppColors.bgSecondary,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: _categoryColor(_result!).withValues(alpha: 0.35)),
               ),
               child: Column(
                 children: [
-                  Text('Coeficiente Wilks',
+                  Text('Puntos DOTS',
                       style: TextStyle(color: context.colorTextSecondary, fontSize: 13)),
                   const SizedBox(height: 8),
                   Text(
                     _result!.toStringAsFixed(2),
-                    style: const TextStyle(
-                      color: AppColors.accentPrimary,
+                    style: TextStyle(
+                      color: _categoryColor(_result!),
                       fontSize: 52,
                       fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Total SBD: ${_total.toStringAsFixed(_total % 1 == 0 ? 0 : 1)} kg',
+                    style: TextStyle(
+                        color: context.colorTextSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -702,8 +738,8 @@ class _WilksTabState extends State<_WilksTab> {
               ('< 200', 'Principiante', AppColors.textSecondary),
               ('200 – 299', 'Intermedio', AppColors.accentGreen),
               ('300 – 399', 'Avanzado', AppColors.accentPrimary),
-              ('400 – 499', 'Élite nacional', const Color(0xFFC0C0C0)),
-              ('500+', 'Élite mundial', const Color(0xFFFFD700)),
+              ('400 – 499', 'Élite', const Color(0xFFC0C0C0)),
+              ('500+', 'Clase mundial', const Color(0xFFFFD700)),
             ].map((row) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
@@ -730,7 +766,7 @@ class _WilksTabState extends State<_WilksTab> {
                   Icon(Icons.calculate_rounded, color: AppColors.textMuted, size: 52),
                   SizedBox(height: 12),
                   Text(
-                    'Ingresa tu peso corporal y el peso\nlevantado para calcular tu coeficiente',
+                    'Ingresa tus levantamientos (al menos uno)\ny tu peso corporal para calcular tu DOTS',
                     style: TextStyle(color: context.colorTextMuted, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),

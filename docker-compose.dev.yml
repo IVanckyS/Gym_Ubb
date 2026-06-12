@@ -1,18 +1,24 @@
 # =============================================================
 # docker-compose.dev.yml — DESARROLLO LOCAL
-# Usar: docker compose -f docker-compose.dev.yml up --build
-# Puertos expuestos para debugging con herramientas locales
+#
+# Cadena de dependencias:
+#   postgres ─┐
+#   redis    ─┴─► server
+#
+# Uso: docker compose -f docker-compose.dev.yml up -d
 # =============================================================
 
 services:
+
+  # ── 1. Base de datos principal ─────────────────────────────────────────────
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB: ${DB_NAME:-gym_ubb_dev}
-      POSTGRES_USER: ${DB_USER:-gym_ubb_user}
+      POSTGRES_DB:       ${DB_NAME:-gym_ubb_dev}
+      POSTGRES_USER:     ${DB_USER:-gym_ubb_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword123}
     ports:
-      - "5432:5432"        # Acceso directo para DBeaver, psql, etc.
+      - "5432:5432"       # Acceso directo para DBeaver, psql, etc.
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,15 +28,23 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # ── 2. Caché / blacklist JWT / rate limiting ───────────────────────────────
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     ports:
-      - "16379:6379"       # Acceso directo para Redis Insight, etc. (6379 excluido por Hyper-V)
+      - "16379:6379"      # Puerto mapeado (6379 reservado por Hyper-V en Windows)
     volumes:
       - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
+  # ── 3. Servidor API Dart/Shelf ─────────────────────────────────────────────
+  #    Arranca solo cuando postgres Y redis estén healthy
   server:
     build:
       context: ./server
@@ -38,33 +52,44 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
-      - "8080:8080"        # API
-      - "8181:8181"        # Dart VM Observatory (debugging)
+      - "8080:8080"       # API REST
+      - "8181:8181"       # Dart VM Observatory (debugging)
     environment:
       RUNMODE: development
-      PORT: 8080
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-gym_ubb_dev}
-      DB_USER: ${DB_USER:-gym_ubb_user}
+      PORT:    8080
+
+      # Base de datos
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     ${DB_NAME:-gym_ubb_dev}
+      DB_USER:     ${DB_USER:-gym_ubb_user}
       DB_PASSWORD: ${DB_PASSWORD:-devpassword123}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+
+      # Redis
+      REDIS_HOST:     redis
+      REDIS_PORT:     6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production_min_64_chars_xxxx}
+
+      # JWT
+      JWT_SECRET:   ${JWT_SECRET:-dev_jwt_secret_change_in_production_min_64_chars_xxxx}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-gym-ubb}
+
+      # CORS
       ALLOWED_ORIGIN: "*"
     env_file:
-      - .env
+      - .env              # Sobreescribe los valores anteriores (R2, SMTP, JWT real, etc.)
     volumes:
-      - ./server:/app                    # Monta fuente para edición en vivo
-      - server_dart_tool:/app/.dart_tool # Caché de pub separado del host
-      - server_uploads:/uploads          # Imágenes subidas — persisten entre reinicios
+      - ./server:/app                    # Código fuente en vivo
+      - server_dart_tool:/app/.dart_tool # Caché de pub separado del host Windows
+      - server_uploads:/uploads          # Imágenes locales (fallback sin R2)
     restart: unless-stopped
 
+# ── Volúmenes persistentes ─────────────────────────────────────────────────────
 volumes:
-  postgres_dev_data:
-  redis_dev_data:
-  server_dart_tool:
-  server_uploads:
+  postgres_dev_data:  # Datos PostgreSQL — persisten entre reinicios
+  redis_dev_data:     # Datos Redis (AOF) — persisten entre reinicios
+  server_dart_tool:   # Caché de pub (evita recompilar dependencias en cada build)
+  server_uploads:     # Imágenes subidas localmente (fallback sin R2)

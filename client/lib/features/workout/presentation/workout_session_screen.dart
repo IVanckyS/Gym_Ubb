@@ -6,11 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/services/exercises_service.dart';
 import '../../../shared/services/workout_service.dart';
+import '../../../shared/widgets/youtube_video_card.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   const WorkoutSessionScreen({
@@ -1477,24 +1477,10 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
           }),
         ],
 
-        // Video
+        // Video tutorial inline (YouTube se reproduce dentro de la app)
         if (hasVideo) ...[
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final uri = Uri.parse(videoUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            icon: const Icon(Icons.play_circle_outline, size: 18),
-            label: const Text('Ver video tutorial'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.accentSecondary,
-              side: BorderSide(color: AppColors.accentSecondary.withValues(alpha: 0.5)),
-              minimumSize: const Size.fromHeight(44),
-            ),
-          ),
+          YoutubeVideoCard(videoUrl: videoUrl),
         ],
       ],
     );

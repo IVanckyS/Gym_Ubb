@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/body_map_data.dart';
 
@@ -189,7 +190,7 @@ class ExerciseCard extends StatelessWidget {
               width: double.infinity,
               child: hasImage
                   ? CachedNetworkImage(
-                      imageUrl: imageUrl,
+                      imageUrl: imageUrl.startsWith('http') ? imageUrl : '${ApiConstants.baseUrl}$imageUrl',
                       fit: BoxFit.cover,
                       placeholder: (_, __) => _EmojiPlaceholder(
                         emoji: muscleEmoji,
