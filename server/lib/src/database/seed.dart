@@ -1950,7 +1950,7 @@ Future<void> seedEvents(Connection conn) async {
           'Categorías masculinas y femeninas en sentadilla, press de banca y peso muerto. '
           'Inscripción gratuita para estudiantes UBB.',
       'location': 'Gimnasio UBB, Campus La Castilla, Chillán',
-      'event_date': DateTime(now.year, now.month + 1, 15).toUtc().toIso8601String(),
+      'event_date': now.add(const Duration(days: 90)).toIso8601String().substring(0, 10),
       'registration_url': 'https://forms.gle/ejemplo',
     },
     {
@@ -1959,7 +1959,7 @@ Future<void> seedEvents(Connection conn) async {
       'description': 'Charla magistral a cargo del área de Nutrición y Dietética de la Facultad de Ciencias de la Salud UBB. '
           'Temas: requerimientos calóricos para deportistas universitarios, mitos sobre suplementación y planificación de comidas.',
       'location': 'Auditorio Facultad de Ciencias de la Salud, UBB',
-      'event_date': DateTime(now.year, now.month, now.day + 10).toUtc().toIso8601String(),
+      'event_date': now.add(const Duration(days: 60)).toIso8601String().substring(0, 10),
       'registration_url': null,
     },
     {
@@ -1969,7 +1969,7 @@ Future<void> seedEvents(Connection conn) async {
           'Monitores recorrerán el campus realizando actividades de pausas activas de 10 minutos. '
           'No se requiere inscripción previa.',
       'location': 'Campus La Castilla, UBB',
-      'event_date': DateTime(now.year, now.month, now.day + 5).toUtc().toIso8601String(),
+      'event_date': now.add(const Duration(days: 30)).toIso8601String().substring(0, 10),
       'registration_url': null,
     },
   ];
@@ -1981,13 +1981,13 @@ Future<void> seedEvents(Connection conn) async {
     if (regUrl != null) {
       await conn.execute(
         "INSERT INTO events (id, title, type, description, location, event_date, registration_url, created_by) "
-        "VALUES ('$id'::uuid, \$1, \$2, \$3, \$4, '$eventDate'::timestamptz, \$5, '$adminId'::uuid)",
+        "VALUES ('$id'::uuid, \$1, \$2, \$3, \$4, '$eventDate'::date, \$5, '$adminId'::uuid)",
         parameters: [event['title'], event['type'], event['description'], event['location'], regUrl],
       );
     } else {
       await conn.execute(
         "INSERT INTO events (id, title, type, description, location, event_date, created_by) "
-        "VALUES ('$id'::uuid, \$1, \$2, \$3, \$4, '$eventDate'::timestamptz, '$adminId'::uuid)",
+        "VALUES ('$id'::uuid, \$1, \$2, \$3, \$4, '$eventDate'::date, '$adminId'::uuid)",
         parameters: [event['title'], event['type'], event['description'], event['location']],
       );
     }

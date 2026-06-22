@@ -35,6 +35,9 @@ Router get routinesHandler {
   // DELETE /api/v1/routines/deleteRoutine/<id>
   router.delete('/deleteRoutine/<id>', _deleteRoutine);
 
+  // POST /api/v1/routines/addExerciseToDay
+  router.post('/addExerciseToDay', _addExerciseToDay);
+
   return router;
 }
 
@@ -582,6 +585,63 @@ Future<Response> _copyRoutine(Request request, String id) async {
   }
 
   return _getRoutine(request.change(path: ''), newId);
+}
+
+/// POST /addExerciseToDay
+/// Body: { routineDayId, exerciseId, sets?, reps?, restSeconds?, exerciseType?, durationSeconds? }
+/// Appends a single exercise to a routine day owned by the authenticated user.
+Future<Response> _addExerciseToDay(Request request) async {
+  final claims = await requireAuth(request);
+  final userId = claims['sub'] as String;
+
+  final body = await parseBody(request);
+  final routineDayId = (body['routineDayId'] as String? ?? '').trim();
+  final exerciseId   = (body['exerciseId']   as String? ?? '').trim();
+
+  if (routineDayId.isEmpty) return badRequest('routineDayId es requerido');
+  if (exerciseId.isEmpty)   return badRequest('exerciseId es requerido');
+
+  // Verify the day belongs to a routine owned by this user
+  final ownerCheck = await db.execute(
+    'SELECT r.user_id FROM routine_days rd '
+    'JOIN routines r ON r.id = rd.routine_id '
+    "WHERE rd.id = '$routineDayId'::uuid AND r.is_active = true",
+  );
+  if (ownerCheck.isEmpty) return notFound('Día de rutina no encontrado');
+  final owner = ownerCheck.first.toColumnMap()['user_id'] as String?;
+  if (owner != userId) return forbidden('No tienes acceso a esta rutina');
+
+  final sets            = body['sets']            as int?    ?? 3;
+  final reps            = (body['reps']           as String? ?? '8-12').trim();
+  final restSeconds     = body['restSeconds']     as int?    ?? 90;
+  final exerciseType    = (body['exerciseType']   as String? ?? 'dinamico').trim();
+  final durationSeconds = body['durationSeconds'] as int?;
+
+  // Calculate next order_index
+  final orderResult = await db.execute(
+    'SELECT COALESCE(MAX(order_index), -1) + 1 AS next_order '
+    "FROM routine_day_exercises WHERE routine_day_id = '$routineDayId'::uuid",
+  );
+  final nextOrder = orderResult.first.toColumnMap()['next_order'] as int? ?? 0;
+
+  final newId = _uuid.v4();
+  await db.execute(
+    Sql.named(
+      'INSERT INTO routine_day_exercises '
+      '(id, routine_day_id, exercise_id, sets, reps, rest_seconds, duration_seconds, order_index) '
+      "VALUES ('$newId'::uuid, '$routineDayId'::uuid, '$exerciseId'::uuid, "
+      '@sets, @reps, @restSeconds, @durationSeconds, @orderIndex)',
+    ),
+    parameters: {
+      'sets': sets,
+      'reps': reps,
+      'restSeconds': restSeconds,
+      'durationSeconds': durationSeconds,
+      'orderIndex': nextOrder,
+    },
+  );
+
+  return jsonOk({'added': true, 'exerciseType': exerciseType});
 }
 
 /// DELETE /deleteRoutine/<id>  — soft delete

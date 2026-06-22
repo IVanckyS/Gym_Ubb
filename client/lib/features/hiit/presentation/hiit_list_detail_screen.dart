@@ -128,6 +128,7 @@ class _HiitListDetailScreenState extends State<HiitListDetailScreen> {
     }
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.colorBgSecondary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -324,8 +325,9 @@ class _ModePickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+    return SafeArea(
+      child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,6 +367,7 @@ class _ModePickerSheet extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

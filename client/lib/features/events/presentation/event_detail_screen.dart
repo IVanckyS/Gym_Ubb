@@ -111,6 +111,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     await _openUrl('https://www.google.com/maps/search/?api=1&query=$encoded');
   }
 
+  Future<void> _activate() async {
+    try {
+      await _service.activateEvent(widget.id);
+      if (mounted) setState(() => _event!['isActive'] = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
+        );
+      }
+    }
+  }
+
   Future<void> _deactivate() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -138,7 +151,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (confirm != true || !mounted) return;
     try {
       await _service.deactivateEvent(widget.id);
-      if (mounted) context.pop();
+      if (mounted) setState(() => _event!['isActive'] = false);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -213,9 +226,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final authUser = context.read<AuthProvider>().user;
     final role = authUser?['role'] as String? ?? '';
     final userId = authUser?['id'] as String? ?? '';
-    final creatorId = event['creatorId'] as String? ?? '';
+    final createdBy = event['createdBy'] as Map<String, dynamic>?;
+    final creatorId = createdBy?['id'] as String? ?? '';
+    final isActive = event['isActive'] as bool? ?? true;
     final canEdit = role == 'admin' || userId == creatorId;
-    final canDeactivate = role == 'admin';
+    final canToggleActive = role == 'admin';
 
     return Scaffold(
       backgroundColor: context.colorBgPrimary,
@@ -234,11 +249,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   icon: Icon(Icons.edit_rounded, color: context.colorTextSecondary),
                   onPressed: _showEditSheet,
                 ),
-              if (canDeactivate)
+              if (canToggleActive)
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: AppColors.accentSecondary),
-                  onPressed: _deactivate,
+                  tooltip: isActive ? 'Desactivar evento' : 'Activar evento',
+                  icon: Icon(
+                    isActive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    color: isActive ? AppColors.accentSecondary : AppColors.accentGreen,
+                  ),
+                  onPressed: isActive ? _deactivate : _activate,
                 ),
               IconButton(
                 icon: _togglingInterest

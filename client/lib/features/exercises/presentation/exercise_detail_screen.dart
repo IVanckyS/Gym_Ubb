@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../hiit/data/hiit_models.dart';
 import '../../hiit/data/hiit_service.dart';
+import '../../routines/data/routines_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -275,8 +276,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       const SizedBox(height: 8),
                       Text(
                         name,
-                        style: TextStyle(
-                          color: context.colorTextPrimary,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                         ),
@@ -535,6 +536,29 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                 ],
+
+                // ── Agregar a rutina de fuerza ────────────────────────────
+                FilledButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: context.colorBgSecondary,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (ctx) => _AddToRoutineSheet(exercise: e),
+                    );
+                  },
+                  icon: const Icon(Icons.fitness_center_rounded),
+                  label: const Text('Agregar a rutina'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accentPrimary,
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // ── Agregar a lista HIIT ──────────────────────────────────
                 FilledButton.icon(
@@ -1482,5 +1506,247 @@ class _AddToHiitListSheetState extends State<_AddToHiitListSheet> {
   }
 }
 
+// ── Add-to-routine bottom sheet ───────────────────────────────────────────────
 
+class _AddToRoutineSheet extends StatefulWidget {
+  final Map<String, dynamic> exercise;
 
+  const _AddToRoutineSheet({required this.exercise});
+
+  @override
+  State<_AddToRoutineSheet> createState() => _AddToRoutineSheetState();
+}
+
+class _AddToRoutineSheetState extends State<_AddToRoutineSheet> {
+  final _routinesService = RoutinesService();
+
+  List<Map<String, dynamic>> _routines = [];
+  Map<String, dynamic>? _selectedRoutine;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRoutines();
+  }
+
+  Future<void> _loadRoutines() async {
+    try {
+      final data = await _routinesService.listRoutines();
+      final mine = (data['myRoutines'] as List<dynamic>? ??
+              data['routines'] as List<dynamic>? ??
+              [])
+          .cast<Map<String, dynamic>>();
+      if (mounted) setState(() { _routines = mine; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pickDay(Map<String, dynamic> day) async {
+    final dayId     = day['id'] as String;
+    final ex        = widget.exercise;
+    final exerciseType    = ex['exerciseType'] as String? ?? 'dinamico';
+    final durationSeconds = ex['defaultDurationSeconds'] as int?;
+
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+
+    try {
+      await _routinesService.addExerciseToDay(
+        routineDayId:     dayId,
+        exerciseId:       ex['id'] as String,
+        exerciseType:     exerciseType,
+        sets:             ex['defaultSets'] as int? ?? 3,
+        reps:             ex['defaultReps'] as String? ?? '8-12',
+        restSeconds:      ex['defaultRestSeconds'] as int? ?? 90,
+        durationSeconds:  exerciseType == 'isometrico' ? durationSeconds : null,
+      );
+      final routineName = _selectedRoutine!['name'] as String? ?? '';
+      final dayName     = day['dayName'] as String? ?? day['label'] as String? ?? '';
+      messenger.showSnackBar(
+        SnackBar(content: Text('Añadido a "$routineName – $dayName"')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _selectRoutine(Map<String, dynamic> routine) async {
+    setState(() { _loading = true; _selectedRoutine = routine; });
+    try {
+      final full = await _routinesService.getRoutine(routine['id'] as String);
+      if (mounted) setState(() { _selectedRoutine = full; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (ctx, scrollCtrl) => Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.colorBorder,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: Row(
+              children: [
+                if (_selectedRoutine != null)
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => setState(() {
+                      _selectedRoutine = null;
+                      _loading = false;
+                    }),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                if (_selectedRoutine != null) const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _selectedRoutine == null
+                        ? 'Agregar a rutina'
+                        : 'Elige un día — ${_selectedRoutine!['name']}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Content
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _selectedRoutine == null
+                    ? _buildRoutineList(scrollCtrl)
+                    : _buildDayList(scrollCtrl),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoutineList(ScrollController scrollCtrl) {
+    if (_routines.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'No tienes rutinas.\nCrea una en la pestaña Rutinas.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: context.colorTextMuted),
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      controller: scrollCtrl,
+      itemCount: _routines.length,
+      itemBuilder: (_, i) {
+        final r = _routines[i];
+        final dayNames = (r['dayNames'] as List?)?.cast<String>() ?? [];
+        return ListTile(
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.accentPrimary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.calendar_month_rounded,
+                color: AppColors.accentPrimary, size: 20),
+          ),
+          title: Text(r['name'] as String? ?? ''),
+          subtitle: Text(
+            dayNames.isEmpty
+                ? 'Sin días'
+                : dayNames.take(3).join(' · ') +
+                    (dayNames.length > 3 ? ' +${dayNames.length - 3}' : ''),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: context.colorTextSecondary),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _selectRoutine(r),
+        );
+      },
+    );
+  }
+
+  Widget _buildDayList(ScrollController scrollCtrl) {
+    final days = (_selectedRoutine!['days'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+    if (days.isEmpty) {
+      return Center(
+        child: Text(
+          'Esta rutina no tiene días configurados.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: context.colorTextMuted),
+        ),
+      );
+    }
+    return ListView.builder(
+      controller: scrollCtrl,
+      itemCount: days.length,
+      itemBuilder: (_, i) {
+        final day = days[i];
+        final exercises =
+            (day['exercises'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+        return ListTile(
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: context.colorBgTertiary,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                '${i + 1}',
+                style: TextStyle(
+                  color: AppColors.accentPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          title: Text(day['label'] as String? ?? day['dayName'] as String? ?? ''),
+          subtitle: Text(
+            '${exercises.length} ejercicio${exercises.length != 1 ? 's' : ''}',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: context.colorTextSecondary),
+          ),
+          trailing: const Icon(Icons.add_circle_outline,
+              color: AppColors.accentPrimary),
+          onTap: () => _pickDay(day),
+        );
+      },
+    );
+  }
+}

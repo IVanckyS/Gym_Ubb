@@ -103,6 +103,33 @@ class RoutinesService {
     return data['routine'] as Map<String, dynamic>;
   }
 
+  /// Agrega un ejercicio a un día de rutina existente (sin reemplazar toda la rutina).
+  Future<void> addExerciseToDay({
+    required String routineDayId,
+    required String exerciseId,
+    required String exerciseType,
+    int sets = 3,
+    String reps = '8-12',
+    int restSeconds = 90,
+    int? durationSeconds,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/api/v1/routines/addExerciseToDay');
+    final res = await http.post(
+      uri,
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'routineDayId': routineDayId,
+        'exerciseId': exerciseId,
+        'exerciseType': exerciseType,
+        'sets': sets,
+        'reps': reps,
+        'restSeconds': restSeconds,
+        if (durationSeconds != null) 'durationSeconds': durationSeconds,
+      }),
+    );
+    _unwrap(res);
+  }
+
   /// Devuelve la rutina por defecto completa (con días), o null si no hay.
   Future<Map<String, dynamic>?> getMyDefault() async {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.myDefaultRoutine}');

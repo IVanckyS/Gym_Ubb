@@ -321,6 +321,11 @@ Future<Response> _updateEvent(Request request, String id) async {
   if (body.containsKey('imageUrl')) {
     setClauses.add('image_url = \$$idx'); params.add(body['imageUrl']); idx++;
   }
+  if (body.containsKey('isActive')) {
+    if (role != 'admin') return forbidden('Solo un administrador puede cambiar el estado del evento');
+    final v = body['isActive'];
+    if (v is bool) { setClauses.add('is_active = \$$idx'); params.add(v); idx++; }
+  }
 
   if (setClauses.isEmpty) return badRequest('No hay campos reconocidos');
 

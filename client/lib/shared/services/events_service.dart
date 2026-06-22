@@ -134,4 +134,14 @@ class EventsService {
     final res = await http.patch(uri, headers: await _authHeaders());
     _unwrap(res);
   }
+
+  Future<void> activateEvent(String id) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateEvent(id)}');
+    final res = await http.patch(
+      uri,
+      headers: await _authHeaders(),
+      body: jsonEncode({'isActive': true}),
+    );
+    _unwrap(res);
+  }
 }
