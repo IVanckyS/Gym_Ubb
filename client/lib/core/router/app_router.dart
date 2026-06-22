@@ -32,6 +32,7 @@ import '../../features/hiit/data/hiit_models.dart';
 import '../../features/hiit/presentation/hiit_list_screen.dart';
 import '../../features/hiit/presentation/hiit_config_screen.dart';
 import '../../features/hiit/presentation/hiit_session_screen.dart';
+import '../../features/hiit/presentation/hiit_list_detail_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import '../../shared/providers/onboarding_provider.dart';
 import '../../shared/widgets/main_shell.dart';
@@ -215,6 +216,14 @@ GoRouter buildRouter(
                     }
                     final map = extra as Map<String, dynamic>;
                     final mode = map['mode'] as HiitMode;
+
+                    // From HiitListDetailScreen: pre-load full list of exercises
+                    final exList = map['exercises'] as List<HiitExerciseRef>?;
+                    if (exList != null) {
+                      return HiitConfigScreen(mode: mode, initialExercises: exList);
+                    }
+
+                    // From exercise detail: single exercise pre-loaded
                     final exData = map['exercise'] as Map<String, dynamic>?;
                     HiitExerciseRef? initialEx;
                     if (exData != null) {
@@ -224,9 +233,14 @@ GoRouter buildRouter(
                         imageUrl: exData['imageUrl'] as String?,
                       );
                     }
-                    return HiitConfigScreen(
-                        mode: mode, initialExercise: initialEx);
+                    return HiitConfigScreen(mode: mode, initialExercise: initialEx);
                   },
+                ),
+                GoRoute(
+                  path: 'lists/:id',
+                  builder: (context, state) => HiitListDetailScreen(
+                    id: state.pathParameters['id']!,
+                  ),
                 ),
               ],
             ),

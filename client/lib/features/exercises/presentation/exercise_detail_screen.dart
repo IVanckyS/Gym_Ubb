@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../hiit/data/hiit_models.dart';
+import '../../hiit/data/hiit_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -535,7 +536,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   const SizedBox(height: 24),
                 ],
 
-                // ── Agregar a HIIT ────────────────────────────────────────
+                // ── Agregar a lista HIIT ──────────────────────────────────
                 FilledButton.icon(
                   onPressed: () {
                     final rawUrl = e['imageUrl'] as String?;
@@ -544,17 +545,25 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                         : rawUrl.startsWith('http')
                             ? rawUrl
                             : '${ApiConstants.baseUrl}$rawUrl';
-                    context.go('/hiit/config', extra: {
-                      'mode': HiitMode.tabata,
-                      'exercise': {
-                        'id': e['id'],
-                        'name': e['name'],
-                        'imageUrl': fullUrl,
-                      },
-                    });
+                    final exercise = HiitExerciseRef(
+                      name: e['name'] as String? ?? '',
+                      exerciseId: e['id'] as String?,
+                      imageUrl: fullUrl,
+                    );
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: context.colorBgSecondary,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (ctx) =>
+                          _AddToHiitListSheet(exercise: exercise),
+                    );
                   },
-                  icon: const Icon(Icons.timer_outlined),
-                  label: const Text('Agregar a HIIT'),
+                  icon: const Icon(Icons.playlist_add_rounded),
+                  label: const Text('Agregar a lista HIIT'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFEF4444),
                     minimumSize: const Size.fromHeight(52),
@@ -1284,6 +1293,196 @@ class _MusclePill extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
+      ),
+    );
+  }
+}
+
+// ── Add-to-HIIT-list bottom sheet ─────────────────────────────────────────────
+
+class _AddToHiitListSheet extends StatefulWidget {
+  final HiitExerciseRef exercise;
+
+  const _AddToHiitListSheet({required this.exercise});
+
+  @override
+  State<_AddToHiitListSheet> createState() => _AddToHiitListSheetState();
+}
+
+class _AddToHiitListSheetState extends State<_AddToHiitListSheet> {
+  List<HiitList> _lists = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final lists = await hiitService.listHiitLists();
+      if (mounted) setState(() { _lists = lists; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _addToExistingList(HiitList list) async {
+    Navigator.pop(context);
+    try {
+      await hiitService.addExerciseToList(list.id, widget.exercise);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Añadido a "${list.name}"')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo agregar el ejercicio')),
+        );
+      }
+    }
+  }
+
+  Future<void> _createAndAdd() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.colorBgSecondary,
+        title: const Text('Nueva lista'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Nombre de la lista'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    Navigator.pop(context);
+    try {
+      final newList = await hiitService.createHiitList(name);
+      await hiitService.addExerciseToList(newList.id, widget.exercise);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lista "$name" creada con el ejercicio')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo crear la lista')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (ctx, scrollCtrl) => Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.colorBorder,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Agregar a lista HIIT',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.accentPrimary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.add, color: AppColors.accentPrimary),
+            ),
+            title: const Text('+ Nueva lista'),
+            onTap: _createAndAdd,
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _lists.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Aún no tienes listas.\nCrea una nueva arriba.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: context.colorTextMuted),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollCtrl,
+                        itemCount: _lists.length,
+                        itemBuilder: (_, i) {
+                          final list = _lists[i];
+                          final count = list.exercises.length;
+                          return ListTile(
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: context.colorBgTertiary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.playlist_play_rounded,
+                                color: AppColors.accentPrimary,
+                              ),
+                            ),
+                            title: Text(list.name),
+                            subtitle: Text(
+                              '$count ejercicio${count != 1 ? 's' : ''}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: context.colorTextSecondary),
+                            ),
+                            onTap: () => _addToExistingList(list),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }
