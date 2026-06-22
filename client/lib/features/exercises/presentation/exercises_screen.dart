@@ -432,7 +432,7 @@ class _ExercisesScreenState extends State<ExercisesScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.fitness_center, size: 48, color: AppColors.textMuted),
+                  Icon(Icons.fitness_center, size: 48, color: context.colorTextMuted),
                   const SizedBox(height: 12),
                   Text('Sin resultados', style: Theme.of(context).textTheme.bodyMedium),
                 ],
@@ -509,17 +509,17 @@ class _FilterChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? color.withValues(alpha: 0.18)
-                : AppColors.bgTertiary,
+                : context.colorBgTertiary,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? color : AppColors.border,
+              color: selected ? color : context.colorBorder,
               width: selected ? 1.5 : 1,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? color : AppColors.textSecondary,
+              color: selected ? color : context.colorTextSecondary,
               fontSize: 12,
               fontWeight:
                   selected ? FontWeight.w600 : FontWeight.normal,
@@ -676,7 +676,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
@@ -761,7 +761,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
                 style: TextStyle(color: context.colorTextPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: AppColors.textMuted),
+            icon: Icon(Icons.close, color: context.colorTextMuted),
             onPressed: () => Navigator.pop(context),
             splashRadius: 20,
           ),
@@ -895,7 +895,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
             decoration: BoxDecoration(
               color: context.colorBgTertiary,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colorBorder),
               image: _mainImage != null
                   ? DecorationImage(image: FileImage(_mainImage!), fit: BoxFit.cover)
                   : null,
@@ -904,7 +904,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate_outlined, color: AppColors.textMuted, size: 36),
+                      Icon(Icons.add_photo_alternate_outlined, color: context.colorTextMuted, size: 36),
                       SizedBox(height: 6),
                       Text('Seleccionar de galería',
                           style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
@@ -1042,7 +1042,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
             decoration: BoxDecoration(
               color: context.colorBgTertiary,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colorBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1113,8 +1113,8 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
                       const Spacer(),
                     TextButton.icon(
                       onPressed: () => _pickStepImage(i),
-                      icon: const Icon(Icons.image_outlined,
-                          size: 14, color: AppColors.textSecondary),
+                      icon: Icon(Icons.image_outlined,
+                          size: 14, color: context.colorTextSecondary),
                       label: Text(
                         stepImg != null ? 'Cambiar imagen' : 'Adjuntar imagen',
                         style: TextStyle(color: context.colorTextSecondary, fontSize: 11),
@@ -1390,7 +1390,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
         hintText: hint,
         hintStyle: TextStyle(color: context.colorTextMuted),
         filled: true,
-        fillColor: AppColors.bgSecondary,
+        fillColor: context.colorBgSecondary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
@@ -1424,10 +1424,10 @@ class _DropdownField<T> extends StatelessWidget {
           value: value,
           items: items,
           onChanged: onChanged,
-          dropdownColor: AppColors.bgSecondary,
+          dropdownColor: context.colorBgSecondary,
           style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
+          icon: Icon(Icons.keyboard_arrow_down, color: context.colorTextMuted),
         ),
       ),
     );

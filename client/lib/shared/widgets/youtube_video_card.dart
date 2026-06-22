@@ -136,8 +136,8 @@ class _Thumbnail extends StatelessWidget {
             ),
             errorWidget: (_, _, _) => Container(
               color: Colors.black,
-              child: const Icon(Icons.ondemand_video_rounded,
-                  color: AppColors.textMuted, size: 40),
+              child: Icon(Icons.ondemand_video_rounded,
+                  color: context.colorTextMuted, size: 40),
             ),
           ),
           // Oscurecer para que el botón de play resalte

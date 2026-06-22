@@ -16,7 +16,7 @@ class ExerciseCard extends StatelessWidget {
     super.key,
   });
 
-  static Color _difficultyColor(String? difficulty) {
+  static Color _difficultyColor(String? difficulty, BuildContext context) {
     switch (difficulty) {
       case 'principiante':
         return const Color(0xFF4ECDC4);
@@ -25,7 +25,7 @@ class ExerciseCard extends StatelessWidget {
       case 'avanzado':
         return const Color(0xFFFF6B6B);
       default:
-        return AppColors.textMuted;
+        return context.colorTextMuted;
     }
   }
 
@@ -77,7 +77,7 @@ class ExerciseCard extends StatelessWidget {
     final isCalistenia = exerciseType == 'calistenia';
 
     final muscleColor = _muscleGroupColor(muscleGroup);
-    final difficultyColor = _difficultyColor(difficulty);
+    final difficultyColor = _difficultyColor(difficulty, context);
 
     if (compact) {
       return InkWell(
@@ -88,7 +88,7 @@ class ExerciseCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colorBgSecondary,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colorBorder),
           ),
           child: Row(
             children: [
@@ -145,9 +145,9 @@ class ExerciseCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: AppColors.textMuted,
+                color: context.colorTextMuted,
               ),
             ],
           ),
@@ -168,7 +168,7 @@ class ExerciseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,7 +243,7 @@ class ExerciseCard extends StatelessWidget {
                   Text(
                     name,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textPrimary,
+                          color: context.colorTextPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                     maxLines: 2,
@@ -253,8 +253,8 @@ class ExerciseCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.fitness_center,
-                            size: 11, color: AppColors.textMuted),
+                        Icon(Icons.fitness_center,
+                            size: 11, color: context.colorTextMuted),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(

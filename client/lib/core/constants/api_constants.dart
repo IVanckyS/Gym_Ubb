@@ -18,6 +18,10 @@ class ApiConstants {
   static const String logout = '$apiPrefix/auth/logout';
   static const String refresh = '$apiPrefix/auth/refresh';
   static const String me = '$apiPrefix/auth/me';
+  static const String forgotPasswordRequest =
+      '$apiPrefix/auth/forgot-password/request';
+  static const String forgotPasswordVerify =
+      '$apiPrefix/auth/forgot-password/verify';
 
   // Exercises
   static const String listExercises = '$apiPrefix/exercises/listExercises';

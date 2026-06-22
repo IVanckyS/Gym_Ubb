@@ -103,7 +103,7 @@ class _CareersScreenState extends State<CareersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.school_outlined, color: AppColors.textMuted, size: 48),
+            Icon(Icons.school_outlined, color: context.colorTextMuted, size: 48),
             SizedBox(height: 12),
             Text('No hay carreras registradas', style: TextStyle(color: context.colorTextSecondary)),
           ],
@@ -126,18 +126,18 @@ class _CareersScreenState extends State<CareersScreen> {
                 color: context.colorBgSecondary,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isActive ? AppColors.border : AppColors.textMuted.withValues(alpha: 0.3),
+                  color: isActive ? context.colorBorder : context.colorTextMuted.withValues(alpha: 0.3),
                 ),
               ),
               child: ListTile(
                 leading: Icon(
                   Icons.school,
-                  color: isActive ? AppColors.accentPrimary : AppColors.textMuted,
+                  color: isActive ? AppColors.accentPrimary : context.colorTextMuted,
                 ),
                 title: Text(
                   career['name'] as String? ?? '',
                   style: TextStyle(
-                    color: isActive ? AppColors.textPrimary : AppColors.textMuted,
+                    color: isActive ? context.colorTextPrimary : context.colorTextMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -148,7 +148,7 @@ class _CareersScreenState extends State<CareersScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 20),
+                      icon: Icon(Icons.edit_outlined, color: context.colorTextSecondary, size: 20),
                       tooltip: 'Renombrar',
                       onPressed: () => _showCareerDialog(context, career: career),
                     ),

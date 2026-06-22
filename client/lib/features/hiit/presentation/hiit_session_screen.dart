@@ -183,13 +183,13 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     return '${dt.day} ${months[dt.month - 1]}';
   }
 
-  static Color _phaseColor(HiitPhase phase) => switch (phase) {
+  Color _phaseColor(BuildContext context, HiitPhase phase) => switch (phase) {
         HiitPhase.prep => const Color(0xFFF9B214),
         HiitPhase.work => const Color(0xFFEF4444),
         HiitPhase.rest => const Color(0xFF10B981),
         HiitPhase.restBetweenRounds => const Color(0xFF10B981),
         HiitPhase.done => AppColors.accentGreen,
-        HiitPhase.idle => AppColors.textMuted,
+        HiitPhase.idle => context.colorTextMuted,
       };
 
   static String _phaseLabel(HiitPhase phase) => switch (phase) {
@@ -230,7 +230,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
   Widget build(BuildContext context) {
     final state = _engine.state;
     final config = widget.config;
-    final color = _phaseColor(state.phase);
+    final color = _phaseColor(context, state.phase);
     final label = _phaseLabel(state.phase);
     final isWork = state.phase == HiitPhase.work;
 
@@ -261,7 +261,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.close),
-                    color: AppColors.textMuted,
+                    color: context.colorTextMuted,
                     onPressed: _confirmStop,
                   ),
                   const Spacer(),
@@ -426,7 +426,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                       label: Text(state.isPaused ? 'Continuar' : 'Pausar'),
                       style: FilledButton.styleFrom(
                         backgroundColor: context.colorBgSecondary,
-                        foregroundColor: AppColors.textPrimary,
+                        foregroundColor: context.colorTextPrimary,
                         minimumSize: const Size(160, 52),
                       ),
                     ),

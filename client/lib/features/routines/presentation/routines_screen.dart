@@ -256,7 +256,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.fitness_center, size: 48, color: AppColors.textMuted),
+            Icon(Icons.fitness_center, size: 48, color: context.colorTextMuted),
             SizedBox(height: 16),
             Text(message, style: TextStyle(color: context.colorTextSecondary, fontSize: 15)),
             if (onAction != null) ...[
@@ -296,13 +296,13 @@ class _RoutineCard extends StatelessWidget {
 
   static const _dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-  Color _goalColor(String goal) {
+  Color _goalColor(String goal, BuildContext context) {
     switch (goal) {
       case 'fuerza': return const Color(0xFF3B82F6);
       case 'hipertrofia': return AppColors.accentPrimary;
       case 'resistencia': return AppColors.accentGreen;
       case 'perdida_de_peso': return const Color(0xFFFF6B6B);
-      default: return AppColors.textMuted;
+      default: return context.colorTextMuted;
     }
   }
 
@@ -322,7 +322,7 @@ class _RoutineCard extends StatelessWidget {
     final frequency = routine['frequencyDays'] as int? ?? 0;
     final creatorName = routine['creatorName'] as String? ?? '';
     final description = routine['description'] as String?;
-    final goalColor = _goalColor(goal);
+    final goalColor = _goalColor(goal, context);
 
     // Días reales que eligió el usuario
     final dayNames = (routine['dayNames'] as List? ?? []).map((e) => '$e').toSet();
@@ -338,7 +338,7 @@ class _RoutineCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +355,7 @@ class _RoutineCard extends StatelessWidget {
                           Icon(
                             routine['isPublic'] == true ? Icons.school_outlined : Icons.person_outline,
                             size: 13,
-                            color: AppColors.textMuted,
+                            color: context.colorTextMuted,
                           ),
                           SizedBox(width: 4),
                           Text(creatorName, style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
@@ -402,14 +402,14 @@ class _RoutineCard extends StatelessWidget {
                   height: 28,
                   margin: const EdgeInsets.only(right: 4),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.accentPrimary : AppColors.bgTertiary,
+                    color: active ? AppColors.accentPrimary : context.colorBgTertiary,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
                     child: Text(
                       _dayLabels[i],
                       style: TextStyle(
-                        color: active ? Colors.white : AppColors.textMuted,
+                        color: active ? Colors.white : context.colorTextMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -421,7 +421,7 @@ class _RoutineCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.fitness_center, size: 13, color: AppColors.textMuted),
+                Icon(Icons.fitness_center, size: 13, color: context.colorTextMuted),
                 SizedBox(width: 4),
                 Text('${frequency}x / semana', style: TextStyle(color: context.colorTextSecondary, fontSize: 12)),
                 const Spacer(),
@@ -439,7 +439,7 @@ class _RoutineCard extends StatelessWidget {
                       size: 20,
                       color: routine['isDefault'] == true
                           ? const Color(0xFFFFB347)
-                          : AppColors.textMuted,
+                          : context.colorTextMuted,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -448,25 +448,25 @@ class _RoutineCard extends StatelessWidget {
                 if (!isOwner && onCopy != null) ...[
                   GestureDetector(
                     onTap: () => onCopy!.call(routine['id'] as String),
-                    child: const Icon(Icons.copy_outlined, size: 18, color: AppColors.textMuted),
+                    child: Icon(Icons.copy_outlined, size: 18, color: context.colorTextMuted),
                   ),
                   const SizedBox(width: 10),
                 ],
                 if (isOwner && onEdit != null) ...[
                   GestureDetector(
                     onTap: () => onEdit!.call(routine['id'] as String),
-                    child: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textMuted),
+                    child: Icon(Icons.edit_outlined, size: 18, color: context.colorTextMuted),
                   ),
                   const SizedBox(width: 10),
                 ],
                 if (isOwner && onDelete != null) ...[
                   GestureDetector(
                     onTap: () => _confirmDelete(context),
-                    child: const Icon(Icons.delete_outline, size: 18, color: AppColors.textMuted),
+                    child: Icon(Icons.delete_outline, size: 18, color: context.colorTextMuted),
                   ),
                   const SizedBox(width: 8),
                 ],
-                const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+                Icon(Icons.chevron_right, size: 18, color: context.colorTextMuted),
               ],
             ),
           ],

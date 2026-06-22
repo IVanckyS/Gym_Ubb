@@ -506,8 +506,8 @@ class _PlaceholderBox extends StatelessWidget {
       width: 48,
       height: 48,
       color: context.colorBgTertiary,
-      child: const Icon(Icons.fitness_center_rounded,
-          color: AppColors.textMuted, size: 22),
+      child: Icon(Icons.fitness_center_rounded,
+          color: context.colorTextMuted, size: 22),
     );
   }
 }

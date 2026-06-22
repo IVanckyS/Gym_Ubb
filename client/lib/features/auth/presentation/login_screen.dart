@@ -333,7 +333,30 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+
+            // ── Olvidé mi contraseña ──────────────────────────────────────
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => context.push('/forgot-password'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 4, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '¿Olvidaste tu contraseña?',
+                  style: TextStyle(
+                    color: AppColors.accentPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 4),
 
             // ── Recordar mis datos ────────────────────────────────────────
             Row(

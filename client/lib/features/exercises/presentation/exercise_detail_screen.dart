@@ -108,9 +108,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   decoration: BoxDecoration(
                       color: context.colorBgSecondary,
                       borderRadius: BorderRadius.circular(12)),
-                  child: const Center(
+                  child: Center(
                     child: Icon(Icons.broken_image_outlined,
-                        color: AppColors.textMuted, size: 40),
+                        color: context.colorTextMuted, size: 40),
                   ),
                 ),
               ),
@@ -197,7 +197,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     final muscleColor =
         BodyMapData.muscleColors[displayGroup] ?? AppColors.accentPrimary;
     final emoji = BodyMapData.muscleEmoji[displayGroup] ?? '💪';
-    final difficultyColor = _difficultyColor(difficulty);
+    final difficultyColor = _difficultyColor(difficulty, context);
     final difficultyLabel = _difficultyLabel(difficulty);
 
     return Center(
@@ -257,7 +257,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                           ? [Colors.black54, Colors.black87]
                           : [
                               muscleColor.withValues(alpha: 0.6),
-                              AppColors.bgSecondary,
+                              context.colorBgSecondary,
                             ],
                     ),
                   ),
@@ -274,8 +274,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       const SizedBox(height: 8),
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: context.colorTextPrimary,
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                         ),
@@ -305,7 +305,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                           if (equipment != null && equipment.isNotEmpty)
                             _Badge(
                               label: equipment,
-                              color: AppColors.textSecondary,
+                              color: context.colorTextSecondary,
                               small: true,
                             ),
                         ],
@@ -331,7 +331,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   decoration: BoxDecoration(
                     color: context.colorBgSecondary,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.colorBorder),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -451,8 +451,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                       color: context.colorBgTertiary,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(Icons.broken_image_outlined,
-                                        color: AppColors.textMuted, size: 20),
+                                    child: Icon(Icons.broken_image_outlined,
+                                        color: context.colorTextMuted, size: 20),
                                   ),
                                 ),
                               ),
@@ -574,10 +574,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   Widget _divider() => Container(
         width: 1,
         height: 36,
-        color: AppColors.border,
+        color: context.colorBorder,
       );
 
-  static Color _difficultyColor(String? d) {
+  static Color _difficultyColor(String? d, BuildContext context) {
     switch (d) {
       case 'principiante':
         return const Color(0xFF4ECDC4);
@@ -586,7 +586,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       case 'avanzado':
         return const Color(0xFFFF6B6B);
       default:
-        return AppColors.textMuted;
+        return context.colorTextMuted;
     }
   }
 
@@ -681,8 +681,8 @@ class _ParamChip extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.textMuted,
+          style: TextStyle(
+            color: context.colorTextMuted,
             fontSize: 11,
           ),
         ),
@@ -870,7 +870,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                         style: TextStyle(color: context.colorTextPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textMuted),
+                    icon: Icon(Icons.close, color: context.colorTextMuted),
                     onPressed: () => Navigator.pop(context),
                     splashRadius: 20,
                   ),
@@ -970,7 +970,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                           decoration: BoxDecoration(
                             color: context.colorBgTertiary,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: context.colorBorder),
                           ),
                           child: _mainImage != null
                               ? Stack(fit: StackFit.expand, children: [
@@ -998,7 +998,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                                               child: const Text('Cambiar', style: TextStyle(color: Colors.white, fontSize: 11)))),
                                     ])
                                   : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                      const Icon(Icons.add_photo_alternate_outlined, color: AppColors.textMuted, size: 32),
+                                      Icon(Icons.add_photo_alternate_outlined, color: context.colorTextMuted, size: 32),
                                       const SizedBox(height: 6),
                                       Text('Seleccionar imagen', style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
                                     ]),
@@ -1056,7 +1056,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                           decoration: BoxDecoration(
                             color: context.colorBgTertiary,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: context.colorBorder),
                           ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1115,7 +1115,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
                                 const Spacer(),
                               TextButton.icon(
                                 onPressed: () => _pickStepImage(i),
-                                icon: const Icon(Icons.image_outlined, size: 14, color: AppColors.textSecondary),
+                                icon: Icon(Icons.image_outlined, size: 14, color: context.colorTextSecondary),
                                 label: Text(
                                   (newImg != null || hasExisting) ? 'Cambiar imagen' : 'Adjuntar imagen',
                                   style: TextStyle(color: context.colorTextSecondary, fontSize: 11),
@@ -1255,7 +1255,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
           dropdownColor: context.colorBgSecondary,
           style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
+          icon: Icon(Icons.keyboard_arrow_down, color: context.colorTextMuted),
         ),
       ),
     );

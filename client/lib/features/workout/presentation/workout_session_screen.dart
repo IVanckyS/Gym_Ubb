@@ -469,7 +469,7 @@ class _SessionHeader extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                icon: Icon(Icons.close, color: context.colorTextSecondary),
                 onPressed: onCancel,
                 tooltip: 'Cancelar sesión',
               ),
@@ -581,10 +581,10 @@ class _RestBanner extends StatelessWidget {
                     const Spacer(),
                     GestureDetector(
                       onTap: onSkip,
-                      child: const Text(
+                      child: Text(
                         'Omitir',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: context.colorTextSecondary,
                           fontSize: 12,
                           decoration: TextDecoration.underline,
                         ),
@@ -595,7 +595,7 @@ class _RestBanner extends StatelessWidget {
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppColors.bgSecondary,
+                  backgroundColor: context.colorBgSecondary,
                   valueColor: AlwaysStoppedAnimation(
                     isWarning ? AppColors.accentSecondary : AppColors.accentGreen,
                   ),
@@ -682,7 +682,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         children: [
@@ -709,8 +709,8 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
+                          style: TextStyle(
+                            color: context.colorTextPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                           ),
@@ -718,8 +718,8 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                         const SizedBox(height: 2),
                         Text(
                           '$targetSets series × $targetReps reps · ${restSeconds}s descanso',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                          style: TextStyle(
+                            color: context.colorTextSecondary,
                             fontSize: 12,
                           ),
                         ),
@@ -730,9 +730,9 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                   // Botón info
                   GestureDetector(
                     onTap: () => _showInfo(context),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                      child: Icon(Icons.info_outline, color: AppColors.textMuted, size: 18),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: Icon(Icons.info_outline, color: context.colorTextMuted, size: 18),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -742,7 +742,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                     decoration: BoxDecoration(
                       color: completedSets == targetSets
                           ? AppColors.accentGreen.withValues(alpha: 0.15)
-                          : AppColors.bgTertiary,
+                          : context.colorBgTertiary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -750,7 +750,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                       style: TextStyle(
                         color: completedSets == targetSets
                             ? AppColors.accentGreen
-                            : AppColors.textSecondary,
+                            : context.colorTextSecondary,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -759,7 +759,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                   const SizedBox(width: 4),
                   Icon(
                     _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: AppColors.textMuted,
+                    color: context.colorTextMuted,
                   ),
                 ],
               ),
@@ -854,7 +854,7 @@ class _SetRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: completed
             ? AppColors.accentGreen.withValues(alpha: 0.08)
-            : AppColors.bgTertiary,
+            : context.colorBgTertiary,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: completed
@@ -871,7 +871,7 @@ class _SetRow extends StatelessWidget {
               '$setNumber',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: completed ? AppColors.accentGreen : AppColors.textMuted,
+                color: completed ? AppColors.accentGreen : context.colorTextMuted,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
@@ -923,18 +923,18 @@ class _SetRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: completed
                             ? AppColors.accentGreen
-                            : AppColors.bgSecondary,
+                            : context.colorBgSecondary,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: completed
                               ? AppColors.accentGreen
-                              : AppColors.border,
+                              : context.colorBorder,
                         ),
                       ),
                       child: Icon(
                         Icons.check,
                         size: 18,
-                        color: completed ? Colors.white : AppColors.textMuted,
+                        color: completed ? Colors.white : context.colorTextMuted,
                       ),
                     ),
                   ),
@@ -965,8 +965,8 @@ class _NumberField extends StatelessWidget {
       enabled: enabled,
       textAlign: TextAlign.center,
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-      style: const TextStyle(
-        color: AppColors.textPrimary,
+      style: TextStyle(
+        color: context.colorTextPrimary,
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
@@ -974,7 +974,7 @@ class _NumberField extends StatelessWidget {
         hintText: hint,
         hintStyle: TextStyle(color: context.colorTextMuted, fontSize: 14),
         filled: true,
-        fillColor: AppColors.bgPrimary,
+        fillColor: context.colorBgPrimary,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         border: OutlineInputBorder(
@@ -1295,7 +1295,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
                   margin: const EdgeInsets.only(top: 10, bottom: 4),
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.textMuted.withValues(alpha: 0.4),
+                    color: context.colorTextMuted.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1303,7 +1303,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
               if (_loading)
                 const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.accentPrimary)))
               else if (_exercise == null)
-                const Expanded(child: Center(child: Text('No se pudo cargar la info', style: TextStyle(color: AppColors.textMuted))))
+                Expanded(child: Center(child: Text('No se pudo cargar la info', style: TextStyle(color: context.colorTextMuted))))
               else
                 Expanded(child: _buildContent(controller)),
             ],
@@ -1390,7 +1390,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
         if (hasImage) const SizedBox(height: 14),
 
         // Name
-        Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+        Text(name, style: TextStyle(color: context.colorTextPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
 
         // Badges
@@ -1400,7 +1400,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
             _InfoBadge(label: _muscleLabel(muscleGroup), color: muscleColor),
             _InfoBadge(label: _difficultyLabel(difficulty), color: _difficultyColor(difficulty)),
             if (equipment != null && equipment.isNotEmpty)
-              _InfoBadge(label: equipment, color: AppColors.textMuted, icon: Icons.fitness_center),
+              _InfoBadge(label: equipment, color: context.colorTextMuted, icon: Icons.fitness_center),
           ],
         ),
 
@@ -1455,7 +1455,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
                     child: Center(child: Text('${idx + 1}', style: TextStyle(color: muscleColor, fontSize: 12, fontWeight: FontWeight.w700))),
                   ),
                   Expanded(
-                    child: Text(entry.value, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+                    child: Text(entry.value, style: TextStyle(color: context.colorTextSecondary, fontSize: 13, height: 1.4)),
                   ),
                   if (imgUrl.isNotEmpty) ...[
                     const SizedBox(width: 8),
@@ -1500,7 +1500,7 @@ class _ExerciseInfoSheetState extends State<_ExerciseInfoSheet> {
       case 'principiante': return const Color(0xFF4ECDC4);
       case 'intermedio':   return const Color(0xFFFFB347);
       case 'avanzado':     return const Color(0xFFFF6B6B);
-      default:             return AppColors.textMuted;
+      default:             return const Color(0xFF4A4A5E);
     }
   }
 }

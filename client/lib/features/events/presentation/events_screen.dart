@@ -98,7 +98,7 @@ class _EventsScreenState extends State<EventsScreen>
             child: TabBar(
               controller: _tabs,
               labelColor: AppColors.accentPrimary,
-              unselectedLabelColor: AppColors.textSecondary,
+              unselectedLabelColor: context.colorTextSecondary,
               indicatorColor: AppColors.accentPrimary,
               indicatorSize: TabBarIndicatorSize.label,
               tabs: const [
@@ -186,7 +186,7 @@ class _UpcomingTabState extends State<_UpcomingTab>
     }
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -249,7 +249,7 @@ class _InterestsTabState extends State<_InterestsTab>
     }
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

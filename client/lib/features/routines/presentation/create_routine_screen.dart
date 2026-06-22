@@ -212,7 +212,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
                       height: 4,
                       margin: EdgeInsets.only(right: i < 2 ? 6 : 0),
                       decoration: BoxDecoration(
-                        color: i < _step ? AppColors.accentPrimary : AppColors.bgTertiary,
+                        color: i < _step ? AppColors.accentPrimary : context.colorBgTertiary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -325,14 +325,14 @@ class _Step1State extends State<_Step1> {
               hintText: 'Ej: Mi rutina de fuerza',
               hintStyle: TextStyle(color: context.colorTextMuted),
               filled: true,
-              fillColor: AppColors.bgSecondary,
+              fillColor: context.colorBgSecondary,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.colorBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.colorBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -356,15 +356,15 @@ class _Step1State extends State<_Step1> {
                 onTap: () => widget.onGoalChanged(g.value),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: selected ? g.color.withAlpha(40) : AppColors.bgSecondary,
+                    color: selected ? g.color.withAlpha(40) : context.colorBgSecondary,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: selected ? g.color : AppColors.border, width: selected ? 1.5 : 1),
+                    border: Border.all(color: selected ? g.color : context.colorBorder, width: selected ? 1.5 : 1),
                   ),
                   child: Center(
                     child: Text(
                       g.label,
                       style: TextStyle(
-                        color: selected ? g.color : AppColors.textSecondary,
+                        color: selected ? g.color : context.colorTextSecondary,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 13,
                       ),
@@ -387,14 +387,14 @@ class _Step1State extends State<_Step1> {
               hintText: 'Describe el objetivo y características...',
               hintStyle: TextStyle(color: context.colorTextMuted),
               filled: true,
-              fillColor: AppColors.bgSecondary,
+              fillColor: context.colorBgSecondary,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.colorBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: context.colorBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -409,7 +409,7 @@ class _Step1State extends State<_Step1> {
               decoration: BoxDecoration(
                 color: context.colorBgSecondary,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: context.colorBorder),
               ),
               child: SwitchListTile(
                 title: Text('Rutina pública', style: TextStyle(color: context.colorTextPrimary, fontSize: 14)),
@@ -428,7 +428,7 @@ class _Step1State extends State<_Step1> {
               onPressed: widget.nameCtrl.text.trim().isNotEmpty ? widget.onNext : null,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.accentPrimary,
-                disabledBackgroundColor: AppColors.bgTertiary,
+                disabledBackgroundColor: context.colorBgTertiary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -476,10 +476,10 @@ class _Step2 extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.accentPrimary.withAlpha(30) : AppColors.bgSecondary,
+                    color: selected ? AppColors.accentPrimary.withAlpha(30) : context.colorBgSecondary,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: selected ? AppColors.accentPrimary : AppColors.border,
+                      color: selected ? AppColors.accentPrimary : context.colorBorder,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
@@ -489,7 +489,7 @@ class _Step2 extends StatelessWidget {
                       Text(
                         _dayShort[day] ?? day[0],
                         style: TextStyle(
-                          color: selected ? AppColors.accentPrimary : AppColors.textPrimary,
+                          color: selected ? AppColors.accentPrimary : context.colorTextPrimary,
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                         ),
@@ -498,7 +498,7 @@ class _Step2 extends StatelessWidget {
                       Text(
                         day.substring(0, 3),
                         style: TextStyle(
-                          color: selected ? AppColors.accentPrimary : AppColors.textMuted,
+                          color: selected ? AppColors.accentPrimary : context.colorTextMuted,
                           fontSize: 11,
                         ),
                       ),
@@ -538,8 +538,8 @@ class _Step2 extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onBack,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
+                    foregroundColor: context.colorTextSecondary,
+                    side: BorderSide(color: context.colorBorder),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -552,7 +552,7 @@ class _Step2 extends StatelessWidget {
                   onPressed: onNext,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.accentPrimary,
-                    disabledBackgroundColor: AppColors.bgTertiary,
+                    disabledBackgroundColor: context.colorBgTertiary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -740,15 +740,15 @@ class _Step3State extends State<_Step3> {
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          color: AppColors.bgPrimary,
+          color: context.colorBgPrimary,
           child: Row(
             children: [
               Expanded(
                 child: OutlinedButton(
                   onPressed: widget.onBack,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
+                    foregroundColor: context.colorTextSecondary,
+                    side: BorderSide(color: context.colorBorder),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -800,7 +800,7 @@ class _DayExercisesCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         children: [
@@ -855,8 +855,8 @@ class _DayExercisesCard extends StatelessWidget {
           else
             ...exercises.asMap().entries.map((e) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.border)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: context.colorBorder)),
               ),
               child: Row(
                 children: [
@@ -1010,7 +1010,7 @@ class _ExercisePickerState extends State<_ExercisePicker> {
               child: Column(
                 children: [
                   SizedBox(height: 8),
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colorBorder, borderRadius: BorderRadius.circular(2))),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                     child: Row(
@@ -1021,7 +1021,7 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                             style: TextStyle(color: context.colorTextPrimary, fontSize: 15, fontWeight: FontWeight.w700),
                           ),
                         ),
-                        GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.close, color: AppColors.textMuted)),
+                        GestureDetector(onTap: () => Navigator.pop(context), child: Icon(Icons.close, color: context.colorTextMuted)),
                       ],
                     ),
                   ),
@@ -1033,9 +1033,9 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                       decoration: InputDecoration(
                         hintText: 'Buscar ejercicio...',
                         hintStyle: TextStyle(color: context.colorTextMuted),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                        prefixIcon: Icon(Icons.search, color: context.colorTextMuted, size: 20),
                         filled: true,
-                        fillColor: AppColors.bgTertiary,
+                        fillColor: context.colorBgTertiary,
                         contentPadding: const EdgeInsets.symmetric(vertical: 10),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       ),
@@ -1061,10 +1061,10 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                             duration: const Duration(milliseconds: 150),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: selected ? color.withAlpha(40) : AppColors.bgTertiary,
+                              color: selected ? color.withAlpha(40) : context.colorBgTertiary,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: selected ? color : AppColors.border,
+                                color: selected ? color : context.colorBorder,
                                 width: selected ? 1.5 : 1,
                               ),
                             ),
@@ -1072,13 +1072,13 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (chip.icon != null) ...[
-                                  Icon(chip.icon, size: 11, color: selected ? color : AppColors.textMuted),
+                                  Icon(chip.icon, size: 11, color: selected ? color : context.colorTextMuted),
                                   const SizedBox(width: 4),
                                 ],
                                 Text(
                                   chip.label,
                                   style: TextStyle(
-                                    color: selected ? color : AppColors.textSecondary,
+                                    color: selected ? color : context.colorTextSecondary,
                                     fontSize: 12,
                                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                                   ),
@@ -1102,7 +1102,7 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                               final id = '${ex['id'] ?? ''}';
                               final already = widget.alreadyAdded.contains(id) || _addedThisSession.contains(id);
                               final muscle = ex['muscleGroup'] as String? ?? '';
-                              final color = _muscleColors[muscle] ?? AppColors.textMuted;
+                              final color = _muscleColors[muscle] ?? context.colorTextMuted;
                               return GestureDetector(
                                 onTap: already ? null : () {
                                   widget.onSelect(ex);
@@ -1112,9 +1112,9 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                                   margin: const EdgeInsets.only(bottom: 6),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: already ? AppColors.bgTertiary.withAlpha(80) : AppColors.bgTertiary,
+                                    color: already ? context.colorBgTertiary.withAlpha(80) : context.colorBgTertiary,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: already ? Colors.transparent : AppColors.border),
+                                    border: Border.all(color: already ? Colors.transparent : context.colorBorder),
                                   ),
                                   child: Row(
                                     children: [
@@ -1139,7 +1139,7 @@ class _ExercisePickerState extends State<_ExercisePicker> {
                                             Text(
                                               ex['name'] as String? ?? '',
                                               style: TextStyle(
-                                                color: already ? AppColors.textMuted : AppColors.textPrimary,
+                                                color: already ? context.colorTextMuted : context.colorTextPrimary,
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w500,
                                               ),
@@ -1236,7 +1236,7 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
     final presets = _presets[widget.goal] ?? _presets['hipertrofia']!;
 
     return AlertDialog(
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1284,11 +1284,11 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: selected ? AppColors.accentPrimary.withAlpha(40) : AppColors.bgTertiary,
+                        color: selected ? AppColors.accentPrimary.withAlpha(40) : context.colorBgTertiary,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: selected ? AppColors.accentPrimary : AppColors.border, width: selected ? 1.5 : 1),
+                        border: Border.all(color: selected ? AppColors.accentPrimary : context.colorBorder, width: selected ? 1.5 : 1),
                       ),
-                      child: Text(label, style: TextStyle(color: selected ? AppColors.accentPrimary : AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: Text(label, style: TextStyle(color: selected ? AppColors.accentPrimary : context.colorTextSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
                   );
                 }).toList(),
@@ -1338,7 +1338,7 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
                 onChanged: (v) => _reps = v,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: AppColors.bgTertiary,
+                  fillColor: context.colorBgTertiary,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 ),
@@ -1393,11 +1393,11 @@ class _CounterButton extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: onTap != null ? AppColors.bgTertiary : AppColors.bgTertiary.withAlpha(80),
+          color: onTap != null ? context.colorBgTertiary : context.colorBgTertiary.withAlpha(80),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
-        child: Icon(icon, size: 18, color: onTap != null ? AppColors.textPrimary : AppColors.textMuted),
+        child: Icon(icon, size: 18, color: onTap != null ? context.colorTextPrimary : context.colorTextMuted),
       ),
     );
   }

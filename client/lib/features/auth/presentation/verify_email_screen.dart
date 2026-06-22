@@ -231,10 +231,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Verifica tu correo',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: context.colorTextPrimary,
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -410,8 +410,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           textAlign: TextAlign.center,
           maxLength: 6, // permite pegar código completo
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: context.colorTextPrimary,
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),

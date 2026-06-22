@@ -85,7 +85,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.notifications_none_rounded,
-                          size: 52, color: AppColors.textMuted),
+                          size: 52, color: context.colorTextMuted),
                       const SizedBox(height: 12),
                       Text('Sin notificaciones',
                           style: TextStyle(

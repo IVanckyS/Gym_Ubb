@@ -440,7 +440,7 @@ class _QuickActionTile extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${action.label} — próximamente'),
-              backgroundColor: AppColors.bgTertiary,
+              backgroundColor: context.colorBgTertiary,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -682,7 +682,7 @@ class _RoutineDayCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.circle, size: 5, color: AppColors.textMuted),
+                      Icon(Icons.circle, size: 5, color: context.colorTextMuted),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

@@ -44,7 +44,6 @@ class _MainShellState extends State<MainShell> {
 
   void _showTrainSheet(BuildContext context) {
     final defaultId = context.read<DefaultRoutineProvider>().routineId;
-    final isDark = context.isDarkMode;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.colorBgSecondary,
@@ -62,7 +61,7 @@ class _MainShellState extends State<MainShell> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.textMuted,
+                  color: context.colorTextMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -73,9 +72,7 @@ class _MainShellState extends State<MainShell> {
                   child: Text(
                     '¿Qué quieres hacer?',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: isDark
-                              ? AppColors.textPrimary
-                              : AppColors.textPrimaryLight,
+                          color: context.colorTextPrimary,
                         ),
                   ),
                 ),
@@ -174,8 +171,7 @@ class _MainShellState extends State<MainShell> {
 
     final navBgColor = context.colorBgSecondary;
     final borderColor = context.colorBorder;
-    final unselectedColor =
-        isDark ? AppColors.textSecondary : AppColors.textMutedLight;
+    final unselectedColor = context.colorTextSecondary;
     final activeColor =
         isDark ? const Color(0xFF4D9FFF) : const Color(0xFF014898);
 
@@ -248,7 +244,7 @@ class _TrainIcon extends StatelessWidget {
     if (selected) {
       color = isDark ? const Color(0xFFF9B214) : const Color(0xFF014898);
     } else {
-      color = isDark ? AppColors.textSecondary : AppColors.textMutedLight;
+      color = context.colorTextSecondary;
     }
     return GymIcon('train', size: 24, color: color);
   }

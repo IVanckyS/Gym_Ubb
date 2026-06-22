@@ -7,7 +7,7 @@ import '../utils/response.dart';
 Router get careersHandler {
   final router = Router();
 
-  // GET  /api/v1/careers/listCareers   — lista carreras (autenticado)
+  // GET  /api/v1/careers/listCareers   — lista carreras (público: necesario para registro)
   router.get('/listCareers', _listCareers);
 
   // POST /api/v1/careers/createCareer  — crear carrera (admin)
@@ -30,8 +30,6 @@ Map<String, dynamic> _careerToMap(Map<String, dynamic> row) => {
     };
 
 Future<Response> _listCareers(Request request) async {
-  await requireAuth(request);
-
   final onlyActive = request.url.queryParameters['active'] != 'false';
   final where = onlyActive ? 'WHERE is_active = true' : '';
 

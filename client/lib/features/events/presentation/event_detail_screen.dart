@@ -114,13 +114,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _deactivate() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
-        title: const Text('Desactivar evento',
-            style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text(
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: dialogCtx.colorBgSecondary,
+        title: Text('Desactivar evento',
+            style: TextStyle(color: dialogCtx.colorTextPrimary)),
+        content: Text(
           'El evento dejará de ser visible para los usuarios. ¿Continuar?',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: dialogCtx.colorTextSecondary),
         ),
         actions: [
           TextButton(
@@ -438,7 +438,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   AppBar _simpleAppBar(BuildContext context) => AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_rounded, color: context.colorTextPrimary),
           onPressed: () => context.pop(),
         ),
       );
@@ -599,7 +599,7 @@ class _EditEventSheetState extends State<_EditEventSheet> {
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.dark(
             primary: AppColors.accentPrimary,
-            surface: AppColors.bgSecondary,
+            surface: ctx.colorBgSecondary,
           ),
         ),
         child: child!,
@@ -624,7 +624,7 @@ class _EditEventSheetState extends State<_EditEventSheet> {
         data: Theme.of(ctx).copyWith(
           colorScheme: ColorScheme.dark(
             primary: AppColors.accentPrimary,
-            surface: AppColors.bgSecondary,
+            surface: ctx.colorBgSecondary,
           ),
         ),
         child: child!,

@@ -57,6 +57,127 @@ Future<void> sendVerificationEmail({
   }
 }
 
+/// Envía el email de restablecimiento de contraseña.
+/// Misma lógica que sendVerificationEmail: fallback a logs si no hay SMTP.
+Future<void> sendPasswordResetEmail({
+  required String to,
+  required String code,
+}) async {
+  final host = Platform.environment['SMTP_HOST'];
+  final port = int.tryParse(Platform.environment['SMTP_PORT'] ?? '587') ?? 587;
+  final user = Platform.environment['SMTP_USER'];
+  final password = Platform.environment['SMTP_PASSWORD'];
+
+  if (host == null || user == null || password == null) {
+    print('');
+    print('╔══════════════════════════════════════════════╗');
+    print('║  [EMAIL DEV] Restablecer contraseña          ║');
+    print('║  Para: $to');
+    print('║  Código: $code                               ║');
+    print('╚══════════════════════════════════════════════╝');
+    print('');
+    return;
+  }
+
+  final smtpServer = SmtpServer(
+    host,
+    port: port,
+    username: user,
+    password: password,
+    ssl: port == 465,
+    allowInsecure: port != 465,
+  );
+
+  final message = Message()
+    ..from = Address(user, 'GymUBB')
+    ..recipients.add(to)
+    ..subject = 'Restablecer contraseña — GymUBB ($code)'
+    ..html = _buildPasswordResetEmailHtml(code);
+
+  try {
+    final sendReport = await send(message, smtpServer);
+    print('[EMAIL] Enviado a $to: ${sendReport.mail.subject}');
+  } on MailerException catch (e) {
+    print('[EMAIL] Error enviando a $to: $e');
+    rethrow;
+  }
+}
+
+String _buildPasswordResetEmailHtml(String code) => '''
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#06060e;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table width="480" cellpadding="0" cellspacing="0" style="max-width:480px;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#010c20 0%,#012848 100%);padding:32px 32px 28px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:10px;">
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="100" height="100" rx="24" fill="#001428"/>
+                      <path d="M50 10L82 22V50C82 68 67 80 50 83C33 80 18 68 18 50V22L50 10Z" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+                      <line x1="6" y1="48" x2="94" y2="48" stroke="#F9B214" stroke-width="4.5" stroke-linecap="round"/>
+                      <rect x="4" y="35" width="17" height="26" rx="4" fill="#014898" stroke="#F9B214" stroke-width="2.2"/>
+                      <rect x="1" y="39" width="5" height="18" rx="2" fill="#F9B214" opacity="0.75"/>
+                      <rect x="79" y="35" width="17" height="26" rx="4" fill="#014898" stroke="#F9B214" stroke-width="2.2"/>
+                      <rect x="94" y="39" width="5" height="18" rx="2" fill="#F9B214" opacity="0.75"/>
+                    </svg>
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <span style="font-size:26px;font-weight:900;letter-spacing:-1px;line-height:1;">
+                      <span style="color:#ffffff;">Gym</span><span style="color:#F9B214;">UBB</span>
+                    </span>
+                    <div style="font-size:8.5px;color:#4d9fff;letter-spacing:2.5px;text-transform:uppercase;margin-top:3px;font-weight:700;">Universidad del Bío-Bío</div>
+                  </td>
+                </tr>
+              </table>
+              <div style="margin-top:22px;">
+                <div style="font-size:10px;color:#f97316;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">RESTABLECER CONTRASEÑA</div>
+                <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-1px;line-height:1.1;">Recupera tu</div>
+                <div style="font-size:28px;font-weight:900;color:#F9B214;letter-spacing:-1px;line-height:1.1;">acceso</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#0c0c1a;padding:32px 32px 24px;">
+              <p style="margin:0 0 8px;color:#eeeef8;font-size:16px;font-weight:700;">Solicitud de cambio de contraseña</p>
+              <p style="margin:0 0 24px;color:#6060a0;font-size:14px;line-height:1.6;">
+                Recibimos una solicitud para restablecer la contraseña de tu cuenta GymUBB.
+                Usa el siguiente código, válido por <strong style="color:#eeeef8;">10 minutos</strong>.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="background:#121228;border-radius:14px;border:1px solid rgba(249,115,22,0.35);padding:24px;text-align:center;">
+                    <div style="font-size:11px;color:#6060a0;text-transform:uppercase;letter-spacing:2.5px;margin-bottom:10px;">Código de restablecimiento</div>
+                    <div style="font-size:38px;font-weight:900;color:#f97316;letter-spacing:12px;font-family:'Courier New',monospace;">$code</div>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:#3a3a58;font-size:12px;line-height:1.7;">
+                Si no solicitaste este cambio, ignora este correo y tu contraseña seguirá siendo la misma.<br>
+                No compartas este código con nadie.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#080816;padding:16px 32px 20px;border-top:1px solid rgba(255,255,255,0.04);">
+              <p style="margin:0;color:#2a2a46;font-size:11px;">
+                GymUBB · Universidad del Bío-Bío · Concepción &amp; Chillán, Chile
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+''';
+
 String _buildEmailHtml(String code, String to) => '''
 <!DOCTYPE html>
 <html>

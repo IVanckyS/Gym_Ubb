@@ -80,13 +80,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Future<void> _deactivate() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
-        title: const Text('Desactivar artículo',
-            style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text(
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: dialogCtx.colorBgSecondary,
+        title: Text('Desactivar artículo',
+            style: TextStyle(color: dialogCtx.colorTextPrimary)),
+        content: Text(
           'El artículo dejará de ser visible para los usuarios. ¿Continuar?',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: dialogCtx.colorTextSecondary),
         ),
         actions: [
           TextButton(

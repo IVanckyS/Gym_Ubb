@@ -254,12 +254,12 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
 
           // ── Resto del ranking ──
           if (rest.isNotEmpty) ...[
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Text('Clasificación completa',
                     style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: context.colorTextSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w500)),
               ),
@@ -316,13 +316,13 @@ class _Podium extends StatelessWidget {
           colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         children: [
-          const Text('PODIO',
+          Text('PODIO',
               style: TextStyle(
-                  color: AppColors.textMuted,
+                  color: context.colorTextMuted,
                   fontSize: 11,
                   letterSpacing: 2,
                   fontWeight: FontWeight.w600)),
@@ -347,7 +347,7 @@ class _Podium extends StatelessWidget {
                     Text(
                       name,
                       style: TextStyle(
-                        color: isMe ? AppColors.accentPrimary : AppColors.textPrimary,
+                        color: isMe ? AppColors.accentPrimary : context.colorTextPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -413,7 +413,7 @@ class _MyRecordBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.accentPrimary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.accentPrimary.withValues(alpha: 0.3), ),
       ),
       child: Row(
         children: [
@@ -431,7 +431,7 @@ class _MyRecordBanner extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.textMuted.withValues(alpha: 0.2),
+                color: context.colorTextMuted.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('Pendiente',
@@ -464,12 +464,12 @@ class _LeaderboardRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? AppColors.accentPrimary.withValues(alpha: 0.08) : AppColors.bgSecondary,
+        color: isMe ? AppColors.accentPrimary.withValues(alpha: 0.08) : context.colorBgSecondary,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isMe
               ? AppColors.accentPrimary.withValues(alpha: 0.25)
-              : AppColors.border,
+              : context.colorBorder,
         ),
       ),
       child: Row(
@@ -479,7 +479,7 @@ class _LeaderboardRow extends StatelessWidget {
             child: Text(
               '#$position',
               style: TextStyle(
-                color: isMe ? AppColors.accentPrimary : AppColors.textMuted,
+                color: isMe ? AppColors.accentPrimary : context.colorTextMuted,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
@@ -493,7 +493,7 @@ class _LeaderboardRow extends StatelessWidget {
                 Text(
                   name,
                   style: TextStyle(
-                    color: isMe ? AppColors.accentPrimary : AppColors.textPrimary,
+                    color: isMe ? AppColors.accentPrimary : context.colorTextPrimary,
                     fontWeight: isMe ? FontWeight.w600 : FontWeight.normal,
                     fontSize: 14,
                   ),
@@ -509,8 +509,8 @@ class _LeaderboardRow extends StatelessWidget {
           ),
           Text(
             weight,
-            style: const TextStyle(
-                color: AppColors.textPrimary,
+            style: TextStyle(
+                color: context.colorTextPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 15),
           ),
@@ -518,7 +518,7 @@ class _LeaderboardRow extends StatelessWidget {
           Icon(
             validated ? Icons.verified_rounded : Icons.pending_rounded,
             size: 14,
-            color: validated ? AppColors.accentGreen : AppColors.textMuted,
+            color: validated ? AppColors.accentGreen : context.colorTextMuted,
           ),
         ],
       ),
@@ -580,12 +580,12 @@ class _DotsTabState extends State<_DotsTab> {
     return 'Principiante';
   }
 
-  Color _categoryColor(double dots) {
+  Color _categoryColor(double dots, BuildContext context) {
     if (dots >= 500) return const Color(0xFFFFD700); // oro — clase mundial
     if (dots >= 400) return const Color(0xFFC0C0C0); // plata — élite
     if (dots >= 300) return AppColors.accentPrimary;
     if (dots >= 200) return AppColors.accentGreen;
-    return AppColors.textSecondary;
+    return context.colorTextSecondary;
   }
 
   @override
@@ -601,7 +601,7 @@ class _DotsTabState extends State<_DotsTab> {
             decoration: BoxDecoration(
               color: context.colorBgSecondary,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colorBorder),
             ),
             child: Text(
               'DOTS es el puntaje oficial del powerlifting moderno (reemplazó a Wilks). '
@@ -683,13 +683,13 @@ class _DotsTabState extends State<_DotsTab> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    _categoryColor(_result!).withValues(alpha: 0.18),
-                    AppColors.bgSecondary,
+                    _categoryColor(_result!, context).withValues(alpha: 0.18),
+                    context.colorBgSecondary,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: _categoryColor(_result!).withValues(alpha: 0.35)),
+                    color: _categoryColor(_result!, context).withValues(alpha: 0.35)),
               ),
               child: Column(
                 children: [
@@ -699,7 +699,7 @@ class _DotsTabState extends State<_DotsTab> {
                   Text(
                     _result!.toStringAsFixed(2),
                     style: TextStyle(
-                      color: _categoryColor(_result!),
+                      color: _categoryColor(_result!, context),
                       fontSize: 52,
                       fontWeight: FontWeight.bold,
                     ),
@@ -714,13 +714,13 @@ class _DotsTabState extends State<_DotsTab> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _categoryColor(_result!).withValues(alpha: 0.15),
+                      color: _categoryColor(_result!, context).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       _category(_result!),
                       style: TextStyle(
-                        color: _categoryColor(_result!),
+                        color: _categoryColor(_result!, context),
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -735,7 +735,7 @@ class _DotsTabState extends State<_DotsTab> {
                 style: TextStyle(color: context.colorTextSecondary, fontSize: 13)),
             const SizedBox(height: 10),
             ...[
-              ('< 200', 'Principiante', AppColors.textSecondary),
+              ('< 200', 'Principiante', context.colorTextSecondary),
               ('200 – 299', 'Intermedio', AppColors.accentGreen),
               ('300 – 399', 'Avanzado', AppColors.accentPrimary),
               ('400 – 499', 'Élite', const Color(0xFFC0C0C0)),
@@ -763,7 +763,7 @@ class _DotsTabState extends State<_DotsTab> {
               child: Column(
                 children: [
                   const SizedBox(height: 32),
-                  Icon(Icons.calculate_rounded, color: AppColors.textMuted, size: 52),
+                  Icon(Icons.calculate_rounded, color: context.colorTextMuted, size: 52),
                   SizedBox(height: 12),
                   Text(
                     'Ingresa tus levantamientos (al menos uno)\ny tu peso corporal para calcular tu DOTS',
@@ -1135,7 +1135,7 @@ class _ValidationTabState extends State<_ValidationTab> {
 
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: _load,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -1151,7 +1151,7 @@ class _ValidationTabState extends State<_ValidationTab> {
             decoration: BoxDecoration(
               color: context.colorBgSecondary,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colorBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1161,8 +1161,8 @@ class _ValidationTabState extends State<_ValidationTab> {
                     Expanded(
                       child: Text(
                         r['exerciseName'] as String? ?? '--',
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
+                        style: TextStyle(
+                            color: context.colorTextPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 14),
                       ),
@@ -1170,7 +1170,7 @@ class _ValidationTabState extends State<_ValidationTab> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.textMuted.withValues(alpha: 0.15),
+                        color: context.colorTextMuted.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1261,15 +1261,15 @@ class _Dropdown extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: DropdownButton<Map<String, dynamic>>(
         value: selected,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        dropdownColor: AppColors.bgSecondary,
+        dropdownColor: context.colorBgSecondary,
         style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
-        icon: const Icon(Icons.expand_more, color: AppColors.textSecondary),
+        icon: Icon(Icons.expand_more, color: context.colorTextSecondary),
         items: items.map((ex) => DropdownMenuItem(
           value: ex,
           child: Text(ex['name'] as String? ?? '', overflow: TextOverflow.ellipsis),
@@ -1294,15 +1294,15 @@ class _RepChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accentPrimary : AppColors.bgSecondary,
+          color: selected ? AppColors.accentPrimary : context.colorBgSecondary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: selected ? AppColors.accentPrimary : AppColors.border),
+              color: selected ? AppColors.accentPrimary : context.colorBorder),
         ),
         child: Text(
           reps == 1 ? '1RM' : '${reps}RM',
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected ? Colors.white : context.colorTextSecondary,
             fontSize: 13,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -1327,16 +1327,16 @@ class _GenderChip extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.accentPrimary : AppColors.bgSecondary,
+            color: selected ? AppColors.accentPrimary : context.colorBgSecondary,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: selected ? AppColors.accentPrimary : AppColors.border),
+                color: selected ? AppColors.accentPrimary : context.colorBorder),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : context.colorTextSecondary,
               fontSize: 14,
               fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
             ),
@@ -1372,7 +1372,7 @@ class _CalcField extends StatelessWidget {
         labelStyle: TextStyle(color: context.colorTextSecondary, fontSize: 13),
         hintStyle: TextStyle(color: context.colorTextMuted),
         filled: true,
-        fillColor: AppColors.bgTertiary,
+        fillColor: context.colorBgTertiary,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -1393,11 +1393,11 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.textMuted, size: 52),
+          Icon(icon, color: context.colorTextMuted, size: 52),
           const SizedBox(height: 16),
           Text(title,
-              style: const TextStyle(
-                  color: AppColors.textSecondary,
+              style: TextStyle(
+                  color: context.colorTextSecondary,
                   fontSize: 16,
                   fontWeight: FontWeight.w500)),
           SizedBox(height: 6),

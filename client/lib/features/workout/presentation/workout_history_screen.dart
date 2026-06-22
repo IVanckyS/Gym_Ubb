@@ -104,7 +104,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.fitness_center, color: AppColors.textMuted, size: 56),
+            Icon(Icons.fitness_center, color: context.colorTextMuted, size: 56),
             SizedBox(height: 16),
             Text(
               'Sin entrenamientos aún',
@@ -122,7 +122,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: () => _load(refresh: true),
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
@@ -203,7 +203,7 @@ class _SessionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,8 +213,8 @@ class _SessionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: context.colorTextPrimary,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),

@@ -102,22 +102,22 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 const SizedBox(height: 40),
 
                 // ── Título y subtítulo ────────────────────────────────────
-                const Text(
+                Text(
                   '¿Quieres recibir\nnotificaciones?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: context.colorTextPrimary,
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
                     height: 1.3,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Te avisaremos sobre tus rutinas,\nlogros y eventos del gimnasio UBB.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: context.colorTextSecondary,
                     fontSize: 15,
                     height: 1.5,
                   ),
@@ -158,10 +158,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: _loading ? null : _skipNotifications,
-                  child: const Text(
+                  child: Text(
                     'Ahora no',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: context.colorTextSecondary,
                       fontSize: 14,
                     ),
                   ),

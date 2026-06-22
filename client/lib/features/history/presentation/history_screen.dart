@@ -483,7 +483,7 @@ class _ProgressChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: LineChart(
         LineChartData(
@@ -493,7 +493,7 @@ class _ProgressChart extends StatelessWidget {
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) => FlLine(
-              color: AppColors.border,
+              color: context.colorBorder,
               strokeWidth: 1,
             ),
           ),
@@ -551,7 +551,7 @@ class _ProgressChart extends StatelessWidget {
                   radius: 4,
                   color: AppColors.accentPrimary,
                   strokeWidth: 2,
-                  strokeColor: AppColors.bgSecondary,
+                  strokeColor: context.colorBgSecondary,
                 ),
               ),
               belowBarData: BarAreaData(
@@ -569,7 +569,7 @@ class _ProgressChart extends StatelessWidget {
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => AppColors.bgTertiary,
+              getTooltipColor: (_) => context.colorBgTertiary,
               getTooltipItems: (spots) => spots.map((s) {
                 final i = s.x.toInt();
                 final date = i < points.length ? (points[i]['date'] as String? ?? '') : '';
@@ -657,7 +657,7 @@ class _MiniStat extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -695,7 +695,7 @@ class _SessionsTable extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colorBgSecondary,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colorBorder),
           ),
           child: Builder(builder: (context) {
             final unit = context.watch<WeightUnitNotifier>().unit;
@@ -718,7 +718,7 @@ class _SessionsTable extends StatelessWidget {
               return Container(
                 decoration: BoxDecoration(
                   border: i > 0
-                      ? const Border(top: BorderSide(color: AppColors.border))
+                      ? Border(top: BorderSide(color: context.colorBorder))
                       : null,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -793,7 +793,7 @@ class _MeasurementsTabState extends State<_MeasurementsTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -869,7 +869,7 @@ class _MeasurementsTabState extends State<_MeasurementsTab> {
           Expanded(
             child: RefreshIndicator(
               color: AppColors.accentPrimary,
-              backgroundColor: AppColors.bgSecondary,
+              backgroundColor: context.colorBgSecondary,
               onRefresh: _load,
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -922,7 +922,7 @@ class _MeasurementCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -933,7 +933,7 @@ class _MeasurementCard extends StatelessWidget {
               const Spacer(),
               IconButton(
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.textMuted),
+                icon: Icon(Icons.delete_outline, size: 18, color: context.colorTextMuted),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -1083,7 +1083,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                  icon: Icon(Icons.close, color: context.colorTextSecondary),
                 ),
               ],
             ),
@@ -1151,7 +1151,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
         labelText: label,
         labelStyle: TextStyle(color: context.colorTextSecondary),
         filled: true,
-        fillColor: AppColors.bgTertiary,
+        fillColor: context.colorBgTertiary,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       );
@@ -1175,7 +1175,7 @@ class _FormField extends StatelessWidget {
         labelStyle: TextStyle(color: context.colorTextSecondary, fontSize: 12),
         hintStyle: TextStyle(color: context.colorTextMuted, fontSize: 12),
         filled: true,
-        fillColor: AppColors.bgTertiary,
+        fillColor: context.colorBgTertiary,
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -1260,7 +1260,7 @@ class _RecordsTabState extends State<_RecordsTab> {
 
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -1283,7 +1283,7 @@ class _RecordsTabState extends State<_RecordsTab> {
             decoration: BoxDecoration(
               color: context.colorBgSecondary,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colorBorder),
             ),
             child: Row(
               children: [
@@ -1301,8 +1301,8 @@ class _RecordsTabState extends State<_RecordsTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(name,
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
+                          style: TextStyle(
+                              color: context.colorTextPrimary,
                               fontWeight: FontWeight.w600,
                               fontSize: 14)),
                       const SizedBox(height: 4),
@@ -1383,15 +1383,15 @@ class _ExerciseDropdown extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: DropdownButton<Map<String, dynamic>>(
         value: selected,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        dropdownColor: AppColors.bgSecondary,
+        dropdownColor: context.colorBgSecondary,
         style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
-        icon: const Icon(Icons.expand_more, color: AppColors.textSecondary),
+        icon: Icon(Icons.expand_more, color: context.colorTextSecondary),
         items: exercises.map((ex) => DropdownMenuItem(
           value: ex,
           child: Text(
@@ -1419,16 +1419,16 @@ class _ChipToggle extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accentPrimary : AppColors.bgSecondary,
+          color: selected ? AppColors.accentPrimary : context.colorBgSecondary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? AppColors.accentPrimary : AppColors.border,
+            color: selected ? AppColors.accentPrimary : context.colorBorder,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textSecondary,
+            color: selected ? Colors.white : context.colorTextSecondary,
             fontSize: 13,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -1450,7 +1450,7 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.textMuted, size: 52),
+          Icon(icon, color: context.colorTextMuted, size: 52),
           SizedBox(height: 16),
           Text(title, style: TextStyle(color: context.colorTextSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
           SizedBox(height: 6),
@@ -1815,7 +1815,7 @@ class _DayCell extends StatelessWidget {
         return (
           ctx.colorBgTertiary,
           ctx.colorTextMuted,
-          AppColors.border,
+          ctx.colorBorder,
         );
     }
   }
@@ -1836,7 +1836,7 @@ class _NavButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Icon(icon, size: 18, color: context.colorTextPrimary),
       ),
@@ -1871,7 +1871,7 @@ class _MonthYearPickerState extends State<_MonthYearPicker> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('Ir a mes',
           style: TextStyle(color: context.colorTextPrimary, fontSize: 16)),
@@ -1924,7 +1924,7 @@ class _MonthYearPickerState extends State<_MonthYearPicker> {
                       border: Border.all(
                         color: selected
                             ? AppColors.accentPrimary
-                            : AppColors.border,
+                            : context.colorBorder,
                       ),
                     ),
                     child: Center(

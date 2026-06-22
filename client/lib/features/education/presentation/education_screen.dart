@@ -102,7 +102,7 @@ class _EducationScreenState extends State<EducationScreen>
             child: TabBar(
               controller: _tabs,
               labelColor: AppColors.accentPrimary,
-              unselectedLabelColor: AppColors.textSecondary,
+              unselectedLabelColor: context.colorTextSecondary,
               indicatorColor: AppColors.accentPrimary,
               indicatorSize: TabBarIndicatorSize.label,
               tabs: const [
@@ -290,7 +290,7 @@ class _ArticlesTabState extends State<_ArticlesTab>
                       ? const _EmptyView(message: 'No hay artículos disponibles')
                       : RefreshIndicator(
                           color: AppColors.accentPrimary,
-                          backgroundColor: AppColors.bgSecondary,
+                          backgroundColor: context.colorBgSecondary,
                           onRefresh: _load,
                           child: ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
@@ -355,7 +355,7 @@ class _FavoritesTabState extends State<_FavoritesTab>
     }
     return RefreshIndicator(
       color: AppColors.accentPrimary,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

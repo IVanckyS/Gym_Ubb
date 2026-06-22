@@ -145,6 +145,54 @@ class AuthService {
     );
   }
 
+  // ── Recuperación de contraseña ───────────────────────────────────────────────
+
+  /// Paso 1: solicita el código OTP al correo institucional.
+  Future<void> forgotPasswordRequest({required String email}) async {
+    final res = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.forgotPasswordRequest}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+
+    if (res.statusCode >= 200 && res.statusCode < 300) return;
+
+    final error = body['error'] as Map<String, dynamic>?;
+    throw AuthException(
+      code: error?['code'] as String? ?? 'unknown',
+      message: error?['message'] as String? ?? 'Error desconocido',
+    );
+  }
+
+  /// Paso 2: verifica el código y actualiza la contraseña.
+  Future<void> forgotPasswordVerify({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final res = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.forgotPasswordVerify}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      }),
+    );
+
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+
+    if (res.statusCode >= 200 && res.statusCode < 300) return;
+
+    final error = body['error'] as Map<String, dynamic>?;
+    throw AuthException(
+      code: error?['code'] as String? ?? 'unknown',
+      message: error?['message'] as String? ?? 'Error desconocido',
+    );
+  }
+
   // ── Validación email UBB ─────────────────────────────────────────────────────
 
   static bool isValidUbbEmail(String email) {

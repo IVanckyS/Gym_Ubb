@@ -123,7 +123,7 @@ class _BodyMapWidgetState extends State<BodyMapWidget> {
   void _showMuscleBottomSheet(MuscleGroup group, [MuscleSubgroup? subgroup]) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -136,7 +136,7 @@ class _BodyMapWidgetState extends State<BodyMapWidget> {
     final role = context.read<AuthProvider>().user?['role'] as String? ?? '';
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -370,7 +370,7 @@ class _BodyMapWidgetState extends State<BodyMapWidget> {
                 Text(
                   group.displayName,
                   style: TextStyle(
-                    color: isSelected ? color : AppColors.textSecondary,
+                    color: isSelected ? color : context.colorTextSecondary,
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -408,7 +408,7 @@ class _BodyMapWidgetState extends State<BodyMapWidget> {
                   : context.colorBgTertiary,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? AppColors.accentPrimary : AppColors.border,
+                color: isSelected ? AppColors.accentPrimary : context.colorBorder,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -429,7 +429,7 @@ class _BodyMapWidgetState extends State<BodyMapWidget> {
                   style: TextStyle(
                     color: isSelected
                         ? AppColors.accentPrimary
-                        : AppColors.textSecondary,
+                        : context.colorTextSecondary,
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   ),
@@ -536,7 +536,7 @@ class _ToggleGroup extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgTertiary,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -555,7 +555,7 @@ class _ToggleGroup extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? Colors.white : AppColors.textSecondary,
+                  color: isActive ? Colors.white : context.colorTextSecondary,
                   fontSize: 12,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 ),
@@ -624,7 +624,7 @@ class _MuscleBottomSheetState extends State<_MuscleBottomSheet> {
           decoration: BoxDecoration(
             color: context.colorBgSecondary,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colorBorder),
           ),
           child: Column(
             children: [
@@ -633,7 +633,7 @@ class _MuscleBottomSheetState extends State<_MuscleBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.textMuted,
+                  color: context.colorTextMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -693,16 +693,16 @@ class _MuscleBottomSheetState extends State<_MuscleBottomSheet> {
                           decoration: BoxDecoration(
                             color: isActive
                                 ? color.withValues(alpha: 0.2)
-                                : AppColors.bgTertiary,
+                                : context.colorBgTertiary,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isActive ? color : AppColors.border,
+                              color: isActive ? color : context.colorBorder,
                             ),
                           ),
                           child: Text(
                             d,
                             style: TextStyle(
-                              color: isActive ? color : AppColors.textSecondary,
+                              color: isActive ? color : context.colorTextSecondary,
                               fontSize: 13,
                               fontWeight: isActive
                                   ? FontWeight.w600
@@ -716,7 +716,7 @@ class _MuscleBottomSheetState extends State<_MuscleBottomSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.colorBorder),
               Expanded(
                 child: _loading
                     ? const Center(
@@ -795,7 +795,7 @@ class _JointBottomSheetState extends State<_JointBottomSheet> {
   void _showCreateForm() async {
     final created = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.bgSecondary,
+      backgroundColor: context.colorBgSecondary,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -821,7 +821,7 @@ class _JointBottomSheetState extends State<_JointBottomSheet> {
           decoration: BoxDecoration(
             color: context.colorBgSecondary,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colorBorder),
           ),
           child: Column(
             children: [
@@ -830,7 +830,7 @@ class _JointBottomSheetState extends State<_JointBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.textMuted,
+                  color: context.colorTextMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -875,7 +875,7 @@ class _JointBottomSheetState extends State<_JointBottomSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.colorBorder),
               Expanded(
                 child: _loading
                     ? const Center(
@@ -886,12 +886,12 @@ class _JointBottomSheetState extends State<_JointBottomSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.fitness_center,
-                                    color: AppColors.textMuted, size: 40),
+                                Icon(Icons.fitness_center,
+                                    color: context.colorTextMuted, size: 40),
                                 const SizedBox(height: 12),
-                                const Text('Sin ejercicios registrados',
+                                Text('Sin ejercicios registrados',
                                     style:
-                                        TextStyle(color: AppColors.textMuted)),
+                                        TextStyle(color: context.colorTextMuted)),
                                 if (widget.canCreate) ...[
                                   const SizedBox(height: 12),
                                   TextButton.icon(
@@ -945,7 +945,7 @@ class _JointExerciseCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgTertiary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1114,7 +1114,7 @@ class _CreateJointExerciseSheetState
         hintText: hint,
         hintStyle: TextStyle(color: context.colorTextMuted),
         filled: true,
-        fillColor: AppColors.bgTertiary,
+        fillColor: context.colorBgTertiary,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
@@ -1137,7 +1137,7 @@ class _CreateJointExerciseSheetState
             color: context.colorBgSecondary,
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colorBorder),
           ),
           child: Column(
             children: [
@@ -1146,7 +1146,7 @@ class _CreateJointExerciseSheetState
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.textMuted,
+                    color: context.colorTextMuted,
                     borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
@@ -1156,21 +1156,21 @@ class _CreateJointExerciseSheetState
                     Expanded(
                       child: Text(
                         'Nuevo ejercicio — ${widget.familyName}',
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
+                        style: TextStyle(
+                            color: context.colorTextPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w700),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                      icon: Icon(Icons.close, color: context.colorTextMuted),
                       onPressed: () => Navigator.pop(context),
                       splashRadius: 18,
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1, color: AppColors.border),
+              Divider(height: 1, color: context.colorBorder),
               Expanded(
                 child: SingleChildScrollView(
                   controller: scroll,
@@ -1202,11 +1202,11 @@ class _CreateJointExerciseSheetState
                             child: DropdownButton<String>(
                               value: _type,
                               isExpanded: true,
-                              dropdownColor: AppColors.bgSecondary,
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 14),
-                              icon: const Icon(Icons.keyboard_arrow_down,
-                                  color: AppColors.textMuted),
+                              dropdownColor: context.colorBgSecondary,
+                              style: TextStyle(
+                                  color: context.colorTextPrimary, fontSize: 14),
+                              icon: Icon(Icons.keyboard_arrow_down,
+                                  color: context.colorTextMuted),
                               items: const [
                                 DropdownMenuItem(
                                     value: 'movilidad',
@@ -1266,8 +1266,8 @@ class _CreateJointExerciseSheetState
                                   Expanded(
                                     child: TextFormField(
                                       controller: entry.value,
-                                      style: const TextStyle(
-                                          color: AppColors.textPrimary,
+                                      style: TextStyle(
+                                          color: context.colorTextPrimary,
                                           fontSize: 13),
                                       decoration: _deco(
                                           'Describe el paso ${entry.key + 1}...'),
@@ -1354,8 +1354,8 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          color: AppColors.textSecondary,
+      style: TextStyle(
+          color: context.colorTextSecondary,
           fontSize: 12,
           fontWeight: FontWeight.w600));
 }

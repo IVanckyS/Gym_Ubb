@@ -21,7 +21,7 @@ class _TermsScreenState extends State<TermsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
+        backgroundColor: ctx.colorBgSecondary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           '¿Estás seguro?',
@@ -97,10 +97,10 @@ class _TermsScreenState extends State<TermsScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Antes de comenzar',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: context.colorTextPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -122,14 +122,14 @@ class _TermsScreenState extends State<TermsScreen> {
                   decoration: BoxDecoration(
                     color: context.colorBgSecondary,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.colorBorder),
                   ),
-                  child: const SingleChildScrollView(
-                    padding: EdgeInsets.all(16),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
                     child: Text(
                       kTermsText,
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: context.colorTextSecondary,
                         fontSize: 13,
                         height: 1.6,
                       ),
@@ -159,7 +159,7 @@ class _TermsScreenState extends State<TermsScreen> {
                               border: Border.all(
                                 color: _accepted
                                     ? AppColors.accentPrimary
-                                    : AppColors.textMuted,
+                                    : context.colorTextMuted,
                                 width: 1.5,
                               ),
                             ),
@@ -184,9 +184,9 @@ class _TermsScreenState extends State<TermsScreen> {
                         onPressed: _accepted ? _onAccept : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accentPrimary,
-                          disabledBackgroundColor: AppColors.bgTertiary,
+                          disabledBackgroundColor: context.colorBgTertiary,
                           foregroundColor: Colors.white,
-                          disabledForegroundColor: AppColors.textMuted,
+                          disabledForegroundColor: context.colorTextMuted,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

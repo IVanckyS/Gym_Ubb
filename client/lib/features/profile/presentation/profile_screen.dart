@@ -8,6 +8,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/auth_service.dart';
+import '../../../shared/widgets/career_picker_field.dart';
 import '../data/user_preferences_service.dart';
 import '../providers/theme_notifier.dart';
 import '../providers/weight_unit_notifier.dart';
@@ -499,7 +500,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _displayWeight(dynamic rawKg) {
     if (rawKg == null) return '—';
     final unit = context.read<WeightUnitNotifier>().unit;
-    return _formatWeight((rawKg as num).toDouble(), unit);
+    final kg = rawKg is num ? rawKg.toDouble() : double.tryParse(rawKg.toString()) ?? 0.0;
+    return _formatWeight(kg, unit);
   }
 
   String _formatWeight(double kg, WeightUnit unit) {
@@ -523,9 +525,9 @@ class _EditProfileSheet extends StatefulWidget {
 class _EditProfileSheetState extends State<_EditProfileSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _careerCtrl;
   late final TextEditingController _weightCtrl;
   late final TextEditingController _heightCtrl;
+  String? _selectedCareer;
   bool _saving = false;
   String? _error;
 
@@ -533,7 +535,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.user['name'] as String? ?? '');
-    _careerCtrl = TextEditingController(text: widget.user['career'] as String? ?? '');
+    final career = widget.user['career'] as String?;
+    _selectedCareer = (career != null && career.isNotEmpty) ? career : null;
     _weightCtrl = TextEditingController(
       text: widget.user['weightKg'] != null ? widget.user['weightKg'].toString() : '',
     );
@@ -545,7 +548,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _careerCtrl.dispose();
     _weightCtrl.dispose();
     _heightCtrl.dispose();
     super.dispose();
@@ -562,7 +564,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
       final body = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
-        'career': _careerCtrl.text.trim().isEmpty ? null : _careerCtrl.text.trim(),
+        'career': (_selectedCareer != null && _selectedCareer!.isNotEmpty) ? _selectedCareer : null,
       };
       if (_weightCtrl.text.trim().isNotEmpty) {
         body['weightKg'] = double.tryParse(_weightCtrl.text.trim());
@@ -642,9 +644,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               validator: (v) => (v == null || v.trim().isEmpty) ? 'El nombre es requerido' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _careerCtrl,
-              decoration: const InputDecoration(labelText: 'Carrera (opcional)'),
+            CareerPickerField(
+              value: _selectedCareer,
+              onChanged: (v) => setState(() => _selectedCareer = v),
             ),
             const SizedBox(height: 12),
             Row(

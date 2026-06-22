@@ -46,6 +46,7 @@ Future<void> initDb() async {
   // Sembrar datos de desarrollo si es necesario
   await seedAdminUser(_db!);
   await seedDev(_db!);
+  await seedCareers(_db!);
   await seedJointExercises(_db!);
   await seedArticles(_db!);
   await seedEvents(_db!);

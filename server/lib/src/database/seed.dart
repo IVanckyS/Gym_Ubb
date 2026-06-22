@@ -39,6 +39,79 @@ Future<void> seedAdminUser(Connection conn) async {
   print('[Seed] Usuario admin creado: $adminEmail / Admin1234');
 }
 
+/// Siembra las carreras UBB si la tabla está vacía.
+/// Idempotente: usa ON CONFLICT DO NOTHING para no duplicar en reinicios.
+Future<void> seedCareers(Connection conn) async {
+  const careers = [
+    // Sede Concepción
+    'Arquitectura',
+    'Diseño Industrial',
+    'Ingeniería en Construcción',
+    'Bachillerato en Ciencias (Concepción)',
+    'Ingeniería Estadística',
+    'Contador Público y Auditor (Concepción)',
+    'Ingeniería Civil en Informática (Concepción)',
+    'Ingeniería Comercial (Concepción)',
+    'Ingeniería de Ejecución en Computación e Informática',
+    'Derecho',
+    'Trabajo Social (Concepción)',
+    'Ingeniería Civil',
+    'Ingeniería Civil Eléctrica',
+    'Ingeniería Civil en Automatización',
+    'Ingeniería Civil Industrial',
+    'Ingeniería Civil Mecánica',
+    'Ingeniería Civil Química',
+    'Ingeniería Eléctrica',
+    'Ingeniería Electrónica',
+    'Ingeniería Mecánica',
+    // Sede Chillán
+    'Diseño Gráfico',
+    'Bachillerato en Ciencias (Chillán)',
+    'Ingeniería en Recursos Naturales',
+    'Enfermería',
+    'Fonoaudiología',
+    'Ingeniería en Alimentos',
+    'Medicina',
+    'Nutrición y Dietética',
+    'Química y Farmacia',
+    'Contador Público y Auditor (Chillán)',
+    'Ingeniería Civil en Informática (Chillán)',
+    'Ingeniería Comercial (Chillán)',
+    'Pedagogía en Castellano y Comunicación',
+    'Pedagogía en Ciencias Naturales',
+    'Pedagogía en Educación Especial',
+    'Pedagogía en Educación Física',
+    'Pedagogía en Educación General Básica',
+    'Pedagogía en Educación Matemática',
+    'Pedagogía en Educación Parvularia',
+    'Pedagogía en Historia y Geografía',
+    'Pedagogía en Inglés',
+    'Psicología',
+    'Trabajo Social (Chillán)',
+    // Programas vespertinos exclusivos
+    'Ingeniería de Ejecución en Administración de Empresas',
+    'Ingeniería de Ejecución en Electricidad',
+    'Ingeniería de Ejecución en Mecánica',
+  ];
+
+  int inserted = 0;
+  for (final name in careers) {
+    final result = await conn.execute(
+      Sql.named(
+        'INSERT INTO careers (name) VALUES (@name) ON CONFLICT (name) DO NOTHING',
+      ),
+      parameters: {'name': name},
+    );
+    inserted += result.affectedRows;
+  }
+
+  if (inserted > 0) {
+    print('[Seed] $inserted carreras UBB sembradas.');
+  } else {
+    print('[Seed] Carreras ya existen, omitiendo.');
+  }
+}
+
 /// Limpia sesiones dev y siembra ejercicios solo si la tabla está vacía.
 /// Preserva exercises (con sus image_url de R2) entre reinicios del servidor.
 Future<void> seedDev(Connection conn) async {
@@ -50,7 +123,8 @@ Future<void> seedDev(Connection conn) async {
   // personal_records y workout_sets referencian exercises (FK sin CASCADE) — borrar primero
   await conn.execute('DELETE FROM personal_records');
   await conn.execute('DELETE FROM workout_sets');
-  await conn.execute('DELETE FROM routine_day_exercises');
+  // routine_day_exercises NO se limpia: contiene la configuración de rutinas del usuario,
+  // no datos de sesión. Borrarla en cada reinicio eliminaría los ejercicios guardados.
 
   // Sembrar ejercicios solo si la tabla está vacía para preservar image_url subidas a R2
   final countResult = await conn.execute('SELECT COUNT(*) FROM exercises');

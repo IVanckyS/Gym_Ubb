@@ -346,7 +346,7 @@ class _StatBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Column(
           children: [
@@ -410,7 +410,7 @@ class _DayCard extends StatelessWidget {
                   ? const Color(0xFFFFB347).withAlpha(80)
                   : isExpanded
                       ? AppColors.accentPrimary.withAlpha(80)
-                      : AppColors.border,
+                      : context.colorBorder,
         ),
       ),
       child: Column(
@@ -483,7 +483,7 @@ class _DayCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Icon(
                     isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: AppColors.textMuted,
+                    color: context.colorTextMuted,
                     size: 20,
                   ),
                 ],
@@ -491,7 +491,7 @@ class _DayCard extends StatelessWidget {
             ),
           ),
           if (isExpanded) ...[
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.colorBorder),
             if (exercises.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -546,7 +546,7 @@ class _StartWorkoutButton extends StatelessWidget {
       showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.bgSecondary,
+          backgroundColor: ctx.colorBgSecondary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
             '¿Repetir entrenamiento?',
@@ -590,7 +590,7 @@ class _StartWorkoutButton extends StatelessWidget {
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.bgSecondary,
+        backgroundColor: ctx.colorBgSecondary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           isMissed ? 'Recuperar entrenamiento' : 'Adelantar entrenamiento',
@@ -692,7 +692,7 @@ class _ExerciseRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border, width: index == 0 ? 0 : 0)),
+        border: Border(bottom: BorderSide(color: context.colorBorder, width: index == 0 ? 0 : 0)),
       ),
       child: Row(
         children: [
@@ -745,7 +745,7 @@ class _ExerciseRow extends StatelessWidget {
           const SizedBox(width: 8),
           Row(
             children: [
-              const Icon(Icons.timer_outlined, size: 12, color: AppColors.textMuted),
+              Icon(Icons.timer_outlined, size: 12, color: context.colorTextMuted),
               SizedBox(width: 3),
               Text('${rest}s', style: TextStyle(color: context.colorTextMuted, fontSize: 12)),
             ],

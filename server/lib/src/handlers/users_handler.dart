@@ -44,6 +44,13 @@ Router get usersHandler {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /// Campos públicos de un usuario (nunca retornar password_hash)
+/// Convierte NUMERIC de postgres (puede llegar como String) a num nativo.
+num? _toNum(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v;
+  return num.tryParse(v.toString());
+}
+
 Map<String, dynamic> _userToMap(Map<String, dynamic> row) => {
       'id': row['id'],
       'email': row['email'],
@@ -431,9 +438,9 @@ Future<Response> _patchMe(Request request) async {
   return jsonOk({
     'user': {
       ..._userToMap(row),
-      'weightKg': row['weight_kg'],
-      'heightCm': row['height_cm'],
-      'bodyFatPct': row['body_fat_pct'],
+      'weightKg': _toNum(row['weight_kg']),
+      'heightCm': _toNum(row['height_cm']),
+      'bodyFatPct': _toNum(row['body_fat_pct']),
       'units': row['units'],
       'notificationsEnabled': row['notifications_enabled'],
       'privateProfile': row['private_profile'],

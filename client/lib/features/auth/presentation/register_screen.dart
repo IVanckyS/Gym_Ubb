@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/services/auth_service.dart';
+import '../../../shared/widgets/career_picker_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirm = true;
   bool _loading = false;
   String? _error;
+  String? _selectedCareer;
 
   final _authService = AuthService();
 
@@ -47,6 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _emailCtrl.text.trim().toLowerCase(),
         password: _passwordCtrl.text,
         name: _nameCtrl.text.trim(),
+        career: _selectedCareer,
       );
 
       if (!mounted) return;
@@ -303,6 +306,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 if (v != _passwordCtrl.text) return 'Las contraseñas no coinciden';
                 return null;
               },
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Carrera (opcional) ───────────────────────────────────────────
+            CareerPickerField(
+              value: _selectedCareer,
+              onChanged: (v) => setState(() => _selectedCareer = v),
             ),
 
             // ── Error ────────────────────────────────────────────────────────

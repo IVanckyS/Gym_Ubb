@@ -60,10 +60,10 @@ class WorkoutSummaryScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 '¡Entrenamiento completado!',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: context.colorTextPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -120,12 +120,12 @@ class WorkoutSummaryScreen extends StatelessWidget {
 
               // ── Resumen por ejercicio ──
               if (exercises.isNotEmpty) ...[
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Resumen por ejercicio',
                     style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: context.colorTextPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -155,8 +155,8 @@ class WorkoutSummaryScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.border),
+                    foregroundColor: context.colorTextSecondary,
+                    side: BorderSide(color: context.colorBorder),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   icon: const Icon(Icons.history_rounded, size: 18),
@@ -192,7 +192,7 @@ class _StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colorBgSecondary,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colorBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,15 +234,15 @@ class _ExerciseSummaryRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             name,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: context.colorTextPrimary,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/verify_email_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/auth/presentation/reset_password_verify_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/admin/presentation/users_screen.dart';
 import '../../features/admin/presentation/careers_screen.dart';
@@ -67,7 +69,9 @@ GoRouter buildRouter(
         final status = auth.status;
         final isAuthRoute = loc == '/login' ||
             loc == '/register' ||
-            loc == '/register/verify';
+            loc == '/register/verify' ||
+            loc == '/forgot-password' ||
+            loc == '/forgot-password/verify';
 
         if (status == AuthStatus.unknown) return null;
 
@@ -114,6 +118,19 @@ GoRouter buildRouter(
             return VerifyEmailScreen(
               email: extra['email'] as String? ?? '',
               name: extra['name'] as String? ?? '',
+            );
+          },
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
+          path: '/forgot-password/verify',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return ResetPasswordVerifyScreen(
+              email: extra['email'] as String? ?? '',
             );
           },
         ),

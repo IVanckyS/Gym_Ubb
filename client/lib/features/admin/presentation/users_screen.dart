@@ -111,18 +111,18 @@ class _UsersScreenState extends State<UsersScreen> {
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre o email...',
                 hintStyle: TextStyle(color: context.colorTextMuted),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                prefixIcon: Icon(Icons.search, color: context.colorTextMuted),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 filled: true,
-                fillColor: AppColors.bgTertiary,
+                fillColor: context.colorBgTertiary,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: context.colorBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
+                  borderSide: BorderSide(color: context.colorBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -137,7 +137,7 @@ class _UsersScreenState extends State<UsersScreen> {
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _roleFilter.isEmpty ? 'all' : _roleFilter,
-              dropdownColor: AppColors.bgTertiary,
+              dropdownColor: context.colorBgTertiary,
               style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
               borderRadius: BorderRadius.circular(8),
               items: const [
@@ -187,7 +187,7 @@ class _UsersScreenState extends State<UsersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, color: AppColors.textMuted, size: 48),
+            Icon(Icons.people_outline, color: context.colorTextMuted, size: 48),
             SizedBox(height: 12),
             Text('No se encontraron usuarios', style: TextStyle(color: context.colorTextSecondary)),
           ],
@@ -335,16 +335,16 @@ class _UserCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorBgSecondary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colorBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: _roleColor(role).withValues(alpha: 0.15),
+          backgroundColor: _roleColor(context, role).withValues(alpha: 0.15),
           child: Text(
             (user['name'] as String? ?? '?')[0].toUpperCase(),
             style: TextStyle(
-              color: _roleColor(role),
+              color: _roleColor(context, role),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -355,7 +355,7 @@ class _UserCard extends StatelessWidget {
               child: Text(
                 user['name'] as String? ?? '',
                 style: TextStyle(
-                  color: isActive ? AppColors.textPrimary : AppColors.textMuted,
+                  color: isActive ? context.colorTextPrimary : context.colorTextMuted,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -381,7 +381,7 @@ class _UserCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: Row(
                     children: [
-                      const Icon(Icons.school_outlined, size: 12, color: AppColors.textMuted),
+                      Icon(Icons.school_outlined, size: 12, color: context.colorTextMuted),
                       SizedBox(width: 4),
                       Text(
                         user['career'] as String,
@@ -395,7 +395,7 @@ class _UserCard extends StatelessWidget {
         ),
         trailing: PopupMenuButton<String>(
           color: context.colorBgTertiary,
-          icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
+          icon: Icon(Icons.more_vert, color: context.colorTextMuted),
           onSelected: (val) {
             if (val == 'edit') onEdit();
             if (val == 'toggle') onToggleActive();
@@ -441,11 +441,11 @@ class _UserCard extends StatelessWidget {
     );
   }
 
-  Color _roleColor(String role) => switch (role) {
+  Color _roleColor(BuildContext context, String role) => switch (role) {
         'admin' => AppColors.accentSecondary,
         'professor' => AppColors.accentPrimary,
         'staff' => AppColors.accentGreen,
-        _ => AppColors.textSecondary,
+        _ => context.colorTextSecondary,
       };
 }
 
@@ -459,7 +459,7 @@ class _RoleBadge extends StatelessWidget {
       'admin' => ('Admin', AppColors.accentSecondary),
       'professor' => ('Profesor', AppColors.accentPrimary),
       'staff' => ('Funcionario', AppColors.accentGreen),
-      _ => ('Estudiante', AppColors.textSecondary),
+      _ => ('Estudiante', context.colorTextSecondary),
     };
     return _StatusBadge(label: label, color: color);
   }
@@ -650,7 +650,7 @@ class _UserDialogState extends State<_UserDialog> {
                     )
                   : DropdownButtonFormField<String?>(
                       initialValue: _selectedCareer,
-                      dropdownColor: AppColors.bgTertiary,
+                      dropdownColor: context.colorBgTertiary,
                       style: TextStyle(color: context.colorTextPrimary),
                       decoration: const InputDecoration(labelText: 'Carrera (opcional)'),
                       items: [
@@ -665,7 +665,7 @@ class _UserDialogState extends State<_UserDialog> {
               SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _role,
-                dropdownColor: AppColors.bgTertiary,
+                dropdownColor: context.colorBgTertiary,
                 style: TextStyle(color: context.colorTextPrimary),
                 decoration: const InputDecoration(labelText: 'Rol'),
                 items: const [

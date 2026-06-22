@@ -27,6 +27,8 @@ Router get authHandler {
   router.post('/logout', _logout);
   router.post('/refresh', _refresh);
   router.get('/me', _me);
+  router.post('/forgot-password/request', _forgotPasswordRequest);
+  router.post('/forgot-password/verify', _forgotPasswordVerify);
 
   return router;
 }
@@ -111,6 +113,13 @@ Future<void> _storeRefreshToken({
   );
 }
 
+/// Convierte un valor NUMERIC de postgres (puede llegar como String) a num nativo.
+num? _parseNum(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v;
+  return num.tryParse(v.toString());
+}
+
 /// Construye el objeto de usuario seguro (sin password_hash) para responder al cliente.
 Map<String, dynamic> _safeUser(Map<String, dynamic> row) {
   return {
@@ -120,9 +129,9 @@ Map<String, dynamic> _safeUser(Map<String, dynamic> row) {
     'career': row['career'],
     'faculty': row['faculty'],
     'role': row['role'],
-    'weightKg': row['weight_kg'],
-    'heightCm': row['height_cm'],
-    'bodyFatPct': row['body_fat_pct'],
+    'weightKg': _parseNum(row['weight_kg']),
+    'heightCm': _parseNum(row['height_cm']),
+    'bodyFatPct': _parseNum(row['body_fat_pct']),
     'units': row['units'],
     'notificationsEnabled': row['notifications_enabled'],
     'privateProfile': row['private_profile'],
@@ -793,5 +802,181 @@ Future<Response> _registerVerify(Request request) async {
       'role': role,
       'career': career,
     },
+  });
+}
+
+// ── POST /api/v1/auth/forgot-password/request ─────────────────────────────────
+// Paso 1: genera código OTP y lo envía al correo si el usuario existe.
+// Siempre responde OK para no revelar si el email está registrado.
+
+Future<Response> _forgotPasswordRequest(Request request) async {
+  final ip = _clientIp(request);
+
+  if (await isRateLimited(ip)) {
+    final ttl = await getBlockTtl(ip);
+    return tooManyRequests(
+      'Demasiados intentos. Espera ${(ttl / 60).ceil()} minutos.',
+    );
+  }
+
+  Map<String, dynamic> body;
+  try {
+    body = await parseBody(request);
+  } catch (_) {
+    return badRequest('Body JSON inválido');
+  }
+
+  final email = (getField<String>(body, 'email') ?? '').trim().toLowerCase();
+  if (email.isEmpty) return badRequest('El campo email es requerido');
+
+  if (!_isInstitutionalEmail(email)) {
+    return badRequest(
+      'Solo se permiten emails institucionales (@alumnos.ubiobio.cl o @ubiobio.cl)',
+      code: 'EMAIL_NOT_INSTITUTIONAL',
+    );
+  }
+
+  // Respuesta genérica para no revelar si el email existe (enumeración)
+  const okMessage =
+      'Si existe una cuenta con ese correo, recibirás un código para restablecer tu contraseña.';
+
+  final rows = await db.execute(
+    Sql.named(
+      'SELECT id FROM users WHERE email = @email AND is_active = true',
+    ),
+    parameters: {'email': email},
+  );
+
+  if (rows.isEmpty) {
+    // Delay mínimo para igualat timing con el caso en que sí existe
+    await Future.delayed(const Duration(milliseconds: 300));
+    return jsonOk({'message': okMessage});
+  }
+
+  final code = generateVerificationCode();
+  await redisSet('pwd_reset:$email', code, ttlSeconds: 600);
+  await redisDel('pwd_reset_att:$email');
+
+  try {
+    await sendPasswordResetEmail(to: email, code: code);
+  } catch (_) {
+    await redisDel('pwd_reset:$email');
+    return Response.internalServerError(
+      body: jsonEncode({
+        'data': null,
+        'error': {
+          'code': 'EMAIL_SEND_FAILED',
+          'message': 'No se pudo enviar el correo. Intenta de nuevo.',
+        },
+      }),
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  return jsonOk({'message': okMessage});
+}
+
+// ── POST /api/v1/auth/forgot-password/verify ──────────────────────────────────
+// Paso 2: verifica el código, actualiza la contraseña y revoca sesiones previas.
+
+Future<Response> _forgotPasswordVerify(Request request) async {
+  final ip = _clientIp(request);
+
+  Map<String, dynamic> body;
+  try {
+    body = await parseBody(request);
+  } catch (_) {
+    return badRequest('Body JSON inválido');
+  }
+
+  final email = (getField<String>(body, 'email') ?? '').trim().toLowerCase();
+  final code = (getField<String>(body, 'code') ?? '').trim();
+  final newPassword = getField<String>(body, 'newPassword') ?? '';
+
+  if (email.isEmpty) return badRequest('El campo email es requerido');
+  if (code.isEmpty || code.length != 6) {
+    return badRequest('El código debe tener 6 dígitos');
+  }
+  if (newPassword.isEmpty) return badRequest('La nueva contraseña es requerida');
+  if (newPassword.length < 8) {
+    return badRequest('La contraseña debe tener al menos 8 caracteres');
+  }
+  if (!RegExp(r'[A-Z]').hasMatch(newPassword)) {
+    return badRequest('La contraseña debe contener al menos una mayúscula');
+  }
+  if (!RegExp(r'[0-9]').hasMatch(newPassword)) {
+    return badRequest('La contraseña debe contener al menos un número');
+  }
+
+  // Verificar código en Redis
+  final storedCode = await redisGet('pwd_reset:$email');
+  if (storedCode == null) {
+    return badRequest(
+      'El código ha expirado o no existe. Solicita uno nuevo.',
+      code: 'CODE_EXPIRED',
+    );
+  }
+
+  if (code != storedCode) {
+    final attKey = 'pwd_reset_att:$email';
+    final attempts = await redisIncr(attKey);
+    await redisExpire(attKey, 600);
+
+    if (attempts >= 5) {
+      await redisDel('pwd_reset:$email');
+      await redisDel(attKey);
+      return badRequest(
+        'Demasiados intentos incorrectos. Solicita un nuevo código.',
+        code: 'TOO_MANY_ATTEMPTS',
+      );
+    }
+
+    return badRequest(
+      'Código incorrecto. Intentos restantes: ${5 - attempts}',
+      code: 'INVALID_CODE',
+    );
+  }
+
+  // Código correcto — actualizar contraseña
+  final passwordHash = _hashPassword(newPassword);
+
+  final result = await db.execute(
+    Sql.named(
+      'UPDATE users SET password_hash = @hash '
+      'WHERE email = @email AND is_active = true RETURNING id',
+    ),
+    parameters: {'hash': passwordHash, 'email': email},
+  );
+
+  if (result.isEmpty) {
+    return notFound('Usuario no encontrado');
+  }
+
+  final userId = result.first.toColumnMap()['id'].toString();
+
+  // Revocar todos los refresh tokens: sesiones previas quedan inválidas
+  await db.execute(
+    Sql.named(
+      'UPDATE refresh_tokens SET is_revoked = true WHERE user_id = @userId',
+    ),
+    parameters: {'userId': userId},
+  );
+
+  // Limpiar Redis
+  await redisDel('pwd_reset:$email');
+  await redisDel('pwd_reset_att:$email');
+  await clearAttempts(ip);
+
+  await _audit(
+    action: 'password_changed',
+    userId: userId,
+    ip: ip,
+    userAgent: request.headers['user-agent'],
+    details: {'method': 'forgot_password'},
+  );
+
+  return jsonOk({
+    'message':
+        'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.',
   });
 }
