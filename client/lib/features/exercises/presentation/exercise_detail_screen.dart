@@ -1329,20 +1329,17 @@ class _AddToHiitListSheetState extends State<_AddToHiitListSheet> {
   }
 
   Future<void> _addToExistingList(HiitList list) async {
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
     try {
       await hiitService.addExerciseToList(list.id, widget.exercise);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Añadido a "${list.name}"')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Añadido a "${list.name}"')),
+      );
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo agregar el ejercicio')),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo agregar el ejercicio')),
+      );
     }
   }
 
@@ -1372,21 +1369,18 @@ class _AddToHiitListSheetState extends State<_AddToHiitListSheet> {
     );
     ctrl.dispose();
     if (name == null || name.isEmpty || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
     try {
       final newList = await hiitService.createHiitList(name);
       await hiitService.addExerciseToList(newList.id, widget.exercise);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lista "$name" creada con el ejercicio')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Lista "$name" creada con el ejercicio')),
+      );
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo crear la lista')),
-        );
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo crear la lista')),
+      );
     }
   }
 
