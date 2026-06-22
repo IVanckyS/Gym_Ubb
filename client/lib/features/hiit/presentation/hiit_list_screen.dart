@@ -13,6 +13,7 @@ class HiitListScreen extends StatefulWidget {
 
 class _HiitListScreenState extends State<HiitListScreen> {
   List<HiitSession> _sessions = [];
+  List<HiitList> _lists = [];
   bool _loading = true;
 
   @override
@@ -22,11 +23,62 @@ class _HiitListScreenState extends State<HiitListScreen> {
   }
 
   Future<void> _load() async {
+    setState(() => _loading = true);
     try {
-      final sessions = await hiitService.listSessions(limit: 5);
-      if (mounted) setState(() { _sessions = sessions; _loading = false; });
+      final results = await Future.wait([
+        hiitService.listSessions(limit: 5),
+        hiitService.listHiitLists(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _sessions = results[0] as List<HiitSession>;
+          _lists = results[1] as List<HiitList>;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _createList() async {
+    final ctrl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.colorBgSecondary,
+        title: const Text('Nueva lista HIIT'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Nombre de la lista'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      final list = await hiitService.createHiitList(name);
+      if (mounted) {
+        setState(() => _lists = [list, ..._lists]);
+        context.push('/hiit/lists/${list.id}');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo crear la lista')),
+        );
+      }
     }
   }
 
@@ -60,6 +112,7 @@ class _HiitListScreenState extends State<HiitListScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // ── Modos ──────────────────────────────────────────────────────
             Text(
               'Elige un modo',
               style: Theme.of(context)
@@ -72,14 +125,60 @@ class _HiitListScreenState extends State<HiitListScreen> {
                   mode: mode,
                   color: _modeColor(mode),
                   icon: _modeIcon(mode),
-                  onTap: () => context.go('/hiit/config', extra: mode),
+                  onTap: () => context.push('/hiit/config', extra: mode),
                 )),
+
+            const SizedBox(height: 24),
+
+            // ── Mis Listas ─────────────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Mis Listas',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(color: context.colorTextSecondary),
+                ),
+                TextButton.icon(
+                  onPressed: _createList,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nueva lista'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: AppColors.accentPrimary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             if (_loading)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_sessions.isNotEmpty) ...[
+            else if (_lists.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'No tienes listas aún.\nCrea una con el botón + o desde el detalle de un ejercicio.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: context.colorTextMuted),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              ..._lists.map((list) => _ListCard(
+                    list: list,
+                    onTap: () async {
+                      await context.push('/hiit/lists/${list.id}');
+                      _load();
+                    },
+                  )),
+
+            // ── Sesiones recientes ─────────────────────────────────────────
+            if (!_loading && _sessions.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 'Sesiones recientes',
@@ -97,6 +196,8 @@ class _HiitListScreenState extends State<HiitListScreen> {
     );
   }
 }
+
+// ── Mode card ─────────────────────────────────────────────────────────────────
 
 class _ModeCard extends StatelessWidget {
   final HiitMode mode;
@@ -166,6 +267,77 @@ class _ModeCard extends StatelessWidget {
     );
   }
 }
+
+// ── List card ─────────────────────────────────────────────────────────────────
+
+class _ListCard extends StatelessWidget {
+  final HiitList list;
+  final VoidCallback onTap;
+
+  const _ListCard({required this.list, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = list.exercises.length;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: context.colorBgSecondary,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.colorBorder),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accentPrimary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.playlist_play_rounded,
+                  color: AppColors.accentPrimary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      list.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count ejercicio${count != 1 ? 's' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.colorTextSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: context.colorTextMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Session tile ──────────────────────────────────────────────────────────────
 
 class _SessionTile extends StatelessWidget {
   final HiitSession session;
