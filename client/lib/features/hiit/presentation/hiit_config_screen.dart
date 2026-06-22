@@ -9,10 +9,12 @@ import '../data/hiit_models.dart';
 class HiitConfigScreen extends StatefulWidget {
   final HiitMode mode;
   final HiitExerciseRef? initialExercise;
+  final List<HiitExerciseRef>? initialExercises;
 
   const HiitConfigScreen({
     required this.mode,
     this.initialExercise,
+    this.initialExercises,
     super.key,
   });
 
@@ -27,7 +29,9 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
   void initState() {
     super.initState();
     _config = HiitConfig.defaultFor(widget.mode);
-    if (widget.initialExercise != null) {
+    if (widget.initialExercises != null && widget.initialExercises!.isNotEmpty) {
+      _config = _config.copyWith(exercises: widget.initialExercises!);
+    } else if (widget.initialExercise != null) {
       _config = _config.copyWith(exercises: [widget.initialExercise!]);
     }
   }
@@ -50,7 +54,7 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => const _ExercisePickerSheet(),
+      builder: (ctx) => const ExercisePickerSheet(),
     );
 
     if (exercise != null && mounted) {
@@ -311,14 +315,14 @@ class _ExerciseAvatar extends StatelessWidget {
 
 // ── Bottom sheet picker de ejercicios del catálogo ────────────────────────────
 
-class _ExercisePickerSheet extends StatefulWidget {
-  const _ExercisePickerSheet();
+class ExercisePickerSheet extends StatefulWidget {
+  const ExercisePickerSheet({super.key});
 
   @override
-  State<_ExercisePickerSheet> createState() => _ExercisePickerSheetState();
+  State<ExercisePickerSheet> createState() => _ExercisePickerSheetState();
 }
 
-class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
+class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   final _service = ExercisesService();
   final _searchCtrl = TextEditingController();
 
@@ -467,11 +471,11 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                                       height: 48,
                                       fit: BoxFit.cover,
                                       placeholder: (ctx2, p) =>
-                                          _PlaceholderBox(),
+                                          ExercisePickerPlaceholder(),
                                       errorWidget: (ctx2, e2, st) =>
-                                          _PlaceholderBox(),
+                                          ExercisePickerPlaceholder(),
                                     )
-                                  : _PlaceholderBox(),
+                                  : ExercisePickerPlaceholder(),
                             ),
                             title: Text(name,
                                 style: const TextStyle(
@@ -499,7 +503,9 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
   }
 }
 
-class _PlaceholderBox extends StatelessWidget {
+class ExercisePickerPlaceholder extends StatelessWidget {
+  const ExercisePickerPlaceholder({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
