@@ -98,6 +98,75 @@ class HiitService {
         .map((e) => HiitSession.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // ── hiit_lists ───────────────────────────────────────────────────────────
+
+  Future<List<HiitList>> listHiitLists() async {
+    final res = await http.get(
+      Uri.parse('$_base/api/v1/hiit-lists'),
+      headers: await _headers(),
+    );
+    final data = _unwrap(res);
+    final list = data['lists'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => HiitList.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<HiitList> createHiitList(String name) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/v1/hiit-lists'),
+      headers: await _headers(),
+      body: jsonEncode({'name': name}),
+    );
+    return HiitList.fromJson(_unwrap(res));
+  }
+
+  Future<HiitList> getHiitList(String listId) async {
+    final res = await http.get(
+      Uri.parse('$_base/api/v1/hiit-lists/$listId'),
+      headers: await _headers(),
+    );
+    return HiitList.fromJson(_unwrap(res));
+  }
+
+  Future<void> renameHiitList(String listId, String name) async {
+    final res = await http.patch(
+      Uri.parse('$_base/api/v1/hiit-lists/$listId'),
+      headers: await _headers(),
+      body: jsonEncode({'name': name}),
+    );
+    _unwrap(res);
+  }
+
+  Future<void> deleteHiitList(String listId) async {
+    final res = await http.delete(
+      Uri.parse('$_base/api/v1/hiit-lists/$listId'),
+      headers: await _headers(),
+    );
+    _unwrap(res);
+  }
+
+  Future<void> addExerciseToList(String listId, HiitExerciseRef exercise) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/v1/hiit-lists/$listId/exercises'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'exerciseId': exercise.exerciseId,
+        'name': exercise.name,
+        if (exercise.imageUrl != null) 'imageUrl': exercise.imageUrl,
+      }),
+    );
+    _unwrap(res);
+  }
+
+  Future<void> removeExerciseFromList(String listId, String exerciseId) async {
+    final res = await http.delete(
+      Uri.parse('$_base/api/v1/hiit-lists/$listId/exercises/$exerciseId'),
+      headers: await _headers(),
+    );
+    _unwrap(res);
+  }
 }
 
 final hiitService = HiitService();

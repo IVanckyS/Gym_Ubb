@@ -263,3 +263,27 @@ class HiitSession {
     );
   }
 }
+
+class HiitList {
+  final String id;
+  final String name;
+  final List<HiitExerciseRef> exercises;
+  final DateTime createdAt;
+
+  const HiitList({
+    required this.id,
+    required this.name,
+    required this.exercises,
+    required this.createdAt,
+  });
+
+  factory HiitList.fromJson(Map<String, dynamic> j) => HiitList(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        exercises: (j['exercises'] as List<dynamic>? ?? [])
+            .map((e) => HiitExerciseRef.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt:
+            DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+      );
+}
