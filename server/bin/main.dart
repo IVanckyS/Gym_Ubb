@@ -19,6 +19,7 @@ import '../lib/src/handlers/events_handler.dart';
 import '../lib/src/handlers/notifications_handler.dart';
 import '../lib/src/handlers/lift_submissions_handler.dart';
 import '../lib/src/handlers/hiit_handler.dart';
+import '../lib/src/handlers/hiit_lists_handler.dart';
 import '../lib/src/middleware/auth_middleware.dart';
 import '../lib/src/middleware/cors_middleware.dart';
 import '../lib/src/middleware/security_headers_middleware.dart';
@@ -62,6 +63,7 @@ Future<void> main() async {
   router.mount('/api/v1/notifications', notificationsHandler.call);
   router.mount('/api/v1/lift-submissions', liftSubmissionsHandler.call);
   router.mount('/api/v1/hiit', hiitHandler.call);
+  router.mount('/api/v1/hiit-lists', hiitListsHandler.call);
 
   // Archivos estáticos (imágenes subidas)
   router.get('/uploads/<path|.*>', _staticFileHandler);

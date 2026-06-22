@@ -483,6 +483,20 @@ const List<String> _schemaStatements = [
   'CREATE INDEX IF NOT EXISTS idx_hiit_workouts_user ON hiit_workouts(user_id)',
   'CREATE INDEX IF NOT EXISTS idx_hiit_sessions_user ON hiit_sessions(user_id, started_at DESC)',
 
+  // ── Tabla: hiit_lists ────────────────────────────────────────────────────
+  '''
+  CREATE TABLE IF NOT EXISTS hiit_lists (
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name       TEXT        NOT NULL,
+    exercises  JSONB       NOT NULL DEFAULT \'[]\',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_active  BOOLEAN     NOT NULL DEFAULT TRUE
+  )
+  ''',
+
+  'CREATE INDEX IF NOT EXISTS idx_hiit_lists_user ON hiit_lists(user_id)',
+
   // ── Función trigger: updated_at automático ────────────────────────────────
   r'''
   CREATE OR REPLACE FUNCTION update_updated_at_column()
