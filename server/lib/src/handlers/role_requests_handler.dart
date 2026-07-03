@@ -9,6 +9,12 @@ import '../utils/response.dart';
 
 final _uuid = Uuid();
 
+final _uuidRegExp = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);
+
+bool _isValidUuid(String id) => _uuidRegExp.hasMatch(id);
+
 Router get roleRequestsHandler {
   final router = Router();
 
@@ -154,6 +160,7 @@ Future<Response> _list(Request request) async {
 /// POST /<id>/approve — admin: aprueba y promueve a professor
 Future<Response> _approve(Request request, String id) async {
   final claims = await requireRole(request, 'admin');
+  if (!_isValidUuid(id)) return badRequest('ID inválido');
   final reviewerId = claims['sub'] as String;
 
   final check = await db.execute(
@@ -183,6 +190,7 @@ Future<Response> _approve(Request request, String id) async {
 /// POST /<id>/reject — admin: rechaza con comentario opcional
 Future<Response> _reject(Request request, String id) async {
   final claims = await requireRole(request, 'admin');
+  if (!_isValidUuid(id)) return badRequest('ID inválido');
   final reviewerId = claims['sub'] as String;
 
   final body = await parseBody(request);
