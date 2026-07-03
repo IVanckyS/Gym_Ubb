@@ -18,6 +18,7 @@ import '../lib/src/handlers/articles_handler.dart';
 import '../lib/src/handlers/events_handler.dart';
 import '../lib/src/handlers/notifications_handler.dart';
 import '../lib/src/handlers/lift_submissions_handler.dart';
+import '../lib/src/handlers/role_requests_handler.dart';
 import '../lib/src/handlers/hiit_handler.dart';
 import '../lib/src/handlers/hiit_lists_handler.dart';
 import '../lib/src/middleware/auth_middleware.dart';
@@ -62,6 +63,7 @@ Future<void> main() async {
   router.mount('/api/v1/events', eventsHandler.call);
   router.mount('/api/v1/notifications', notificationsHandler.call);
   router.mount('/api/v1/lift-submissions', liftSubmissionsHandler.call);
+  router.mount('/api/v1/role-requests', roleRequestsHandler.call);
   router.mount('/api/v1/hiit', hiitHandler.call);
   router.mount('/api/v1/hiit-lists', hiitListsHandler.call);
 
