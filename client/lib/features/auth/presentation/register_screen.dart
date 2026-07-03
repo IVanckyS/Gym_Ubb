@@ -18,12 +18,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _justificationCtrl = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _loading = false;
   String? _error;
   String? _selectedCareer;
+  bool _wantsProfessorRole = false;
+  bool _isStaffEmail = false;
 
   final _authService = AuthService();
 
@@ -33,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
+    _justificationCtrl.dispose();
     super.dispose();
   }
 
@@ -50,6 +54,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordCtrl.text,
         name: _nameCtrl.text.trim(),
         career: _selectedCareer,
+        wantsProfessorRole: _wantsProfessorRole,
+        justification: _justificationCtrl.text.trim(),
       );
 
       if (!mounted) return;
@@ -232,6 +238,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 prefixIcon:
                     Icon(Icons.email_outlined, color: context.colorTextMuted),
               ),
+              onChanged: (v) {
+                final email = v.trim().toLowerCase();
+                final isStaff = email.endsWith('@ubiobio.cl') &&
+                    !email.endsWith('@alumnos.ubiobio.cl');
+                if (isStaff != _isStaffEmail) {
+                  setState(() {
+                    _isStaffEmail = isStaff;
+                    if (!isStaff) _wantsProfessorRole = false;
+                  });
+                }
+              },
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
                 if (!AuthService.isValidUbbEmail(v.trim())) {
@@ -315,6 +332,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
               value: _selectedCareer,
               onChanged: (v) => setState(() => _selectedCareer = v),
             ),
+
+            // ── Solicitud de rol profesor (solo correo funcionario) ─────────
+            if (_isStaffEmail) ...[
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                value: _wantsProfessorRole,
+                onChanged: (v) =>
+                    setState(() => _wantsProfessorRole = v ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.accentPrimary,
+                title: Text(
+                  'Soy profesor/a de talleres deportivos',
+                  style: TextStyle(
+                      color: context.colorTextPrimary, fontSize: 14),
+                ),
+                subtitle: Text(
+                  'Podrás crear ejercicios y contenido cuando un administrador apruebe tu solicitud',
+                  style:
+                      TextStyle(color: context.colorTextMuted, fontSize: 12),
+                ),
+              ),
+              if (_wantsProfessorRole) ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _justificationCtrl,
+                  maxLines: 2,
+                  maxLength: 300,
+                  style: TextStyle(color: context.colorTextPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Justificación',
+                    hintText: 'Ej: Profesor del taller de musculación',
+                    prefixIcon: Icon(Icons.badge_outlined,
+                        color: context.colorTextMuted),
+                  ),
+                  validator: (v) {
+                    if (!_wantsProfessorRole) return null;
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Describe brevemente por qué solicitas el rol';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ],
 
             // ── Error ────────────────────────────────────────────────────────
             if (_error != null) ...[

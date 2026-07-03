@@ -93,6 +93,8 @@ class AuthService {
     required String password,
     required String name,
     String? career,
+    bool wantsProfessorRole = false,
+    String? justification,
   }) async {
     final res = await http.post(
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.registerRequest}'),
@@ -102,6 +104,9 @@ class AuthService {
         'password': password,
         'name': name,
         if (career != null && career.isNotEmpty) 'career': career,
+        if (wantsProfessorRole) 'wantsProfessorRole': true,
+        if (wantsProfessorRole && justification != null)
+          'justification': justification,
       }),
     );
 
