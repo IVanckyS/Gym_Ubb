@@ -299,6 +299,25 @@ const List<String> _schemaStatements = [
   )
   ''',
 
+  // ── Tabla: role_requests ──────────────────────────────────────────────────
+  // Solicitudes de rol professor de usuarios staff. status es TEXT (no enum
+  // de Postgres) para evitar el bug de decodificación de enums de postgres ^3.x.
+  '''
+  CREATE TABLE IF NOT EXISTS role_requests (
+    id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    justification   TEXT         NOT NULL,
+    status          TEXT         NOT NULL DEFAULT 'pending',
+    reviewed_by     UUID         REFERENCES users(id),
+    review_comment  TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    reviewed_at     TIMESTAMPTZ
+  )
+  ''',
+
+  'CREATE INDEX IF NOT EXISTS idx_role_requests_user ON role_requests(user_id)',
+  "CREATE INDEX IF NOT EXISTS idx_role_requests_pending ON role_requests(status) WHERE status = 'pending'",
+
   // ── Índices ───────────────────────────────────────────────────────────────
 
   'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
