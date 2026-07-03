@@ -8,6 +8,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/auth_service.dart';
+import '../../../shared/services/role_requests_service.dart';
 import '../../../shared/widgets/career_picker_field.dart';
 import '../data/user_preferences_service.dart';
 import '../providers/theme_notifier.dart';
@@ -23,10 +24,12 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
   final _prefsService = UserPreferencesService();
+  final _roleRequestsService = RoleRequestsService();
 
   Map<String, dynamic>? _stats;
   List<Map<String, dynamic>> _records = [];
   bool _loadingStats = true;
+  Map<String, dynamic>? _myRoleRequest;
 
   @override
   void initState() {
@@ -59,6 +62,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         _loadingStats = false;
       });
+
+      try {
+        final req = await _roleRequestsService.mine();
+        if (mounted) setState(() => _myRoleRequest = req);
+      } catch (_) {
+        // Silencioso: la sección simplemente muestra el botón de solicitar
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingStats = false);
     }
@@ -114,6 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildPersonalRecords(),
                 const SizedBox(height: 24),
                 _buildPersonalData(user),
+                if (role == 'staff') ...[
+                  const SizedBox(height: 24),
+                  _buildRoleRequestSection(),
+                ],
                 const SizedBox(height: 24),
                 _buildSettings(),
                 const SizedBox(height: 24),
@@ -328,6 +342,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ── Solicitud de rol de profesor ─────────────────────────────────────────
+
+  Widget _buildRoleRequestSection() {
+    final status = _myRoleRequest?['status'] as String?;
+
+    Widget content;
+    if (status == 'pending') {
+      content = Row(
+        children: [
+          const Icon(Icons.hourglass_top, color: Color(0xFFFFB347), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Tu solicitud de rol de profesor está pendiente de revisión',
+              style: TextStyle(color: context.colorTextSecondary, fontSize: 13),
+            ),
+          ),
+        ],
+      );
+    } else if (status == 'approved') {
+      content = Row(
+        children: [
+          const Icon(Icons.check_circle_outline,
+              color: AppColors.accentGreen, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Solicitud aprobada. Cierra y vuelve a abrir sesión para activar tu nuevo rol.',
+              style: TextStyle(color: context.colorTextSecondary, fontSize: 13),
+            ),
+          ),
+        ],
+      );
+    } else {
+      final rejectedComment = status == 'rejected'
+          ? (_myRoleRequest?['reviewComment'] as String?)
+          : null;
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (status == 'rejected') ...[
+            Row(
+              children: [
+                const Icon(Icons.cancel_outlined,
+                    color: AppColors.accentSecondary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    rejectedComment == null || rejectedComment.isEmpty
+                        ? 'Tu solicitud anterior fue rechazada.'
+                        : 'Tu solicitud anterior fue rechazada: $rejectedComment',
+                    style: TextStyle(
+                        color: context.colorTextSecondary, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          OutlinedButton.icon(
+            onPressed: _showRoleRequestSheet,
+            icon: const Icon(Icons.sports_gymnastics, size: 18),
+            label: Text(status == 'rejected'
+                ? 'Volver a solicitar rol de profesor'
+                : 'Solicitar rol de profesor de deporte'),
+          ),
+        ],
+      );
+    }
+
+    return _Section(
+      title: 'Rol de profesor',
+      child: content,
+    );
+  }
+
+  Future<void> _showRoleRequestSheet() async {
+    final ctrl = TextEditingController();
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colorBgSecondary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Solicitar rol de profesor de deporte',
+              style: TextStyle(
+                color: ctx.colorTextPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Un administrador revisará tu solicitud. Si se aprueba, podrás crear ejercicios y contenido.',
+              style: TextStyle(color: ctx.colorTextSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              maxLines: 3,
+              maxLength: 300,
+              autofocus: true,
+              style: TextStyle(color: ctx.colorTextPrimary),
+              decoration: const InputDecoration(
+                labelText: 'Justificación',
+                hintText: 'Ej: Profesor del taller de musculación',
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () {
+                if (ctrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Enviar solicitud'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (submitted != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final req = await _roleRequestsService.create(ctrl.text.trim());
+      if (!mounted) return;
+      setState(() => _myRoleRequest = req);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Solicitud enviada. Un administrador la revisará.')),
+      );
+    } on RoleRequestsException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Error de conexión. Intenta de nuevo.')),
+      );
+    }
+  }
+
   // ── Configuración ──────────────────────────────────────────────────────────
 
   Widget _buildSettings() {
@@ -493,7 +659,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _roleLabel(String role) => switch (role) {
     'admin' => 'Admin',
     'professor' => 'Profesor',
-    'staff' => 'Staff',
+    'staff' => 'Funcionario',
     _ => 'Estudiante',
   };
 
