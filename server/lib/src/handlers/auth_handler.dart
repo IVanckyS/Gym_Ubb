@@ -204,7 +204,9 @@ Future<Response> _register(Request request) async {
   }
 
   // Determinar rol por dominio del email
-  final role = email.endsWith('@alumnos.ubiobio.cl') ? 'student' : 'professor';
+  // @alumnos → student; @ubiobio.cl → staff (Funcionario). El rol professor
+  // solo se obtiene por aprobación del admin (role_requests).
+  final role = email.endsWith('@alumnos.ubiobio.cl') ? 'student' : 'staff';
 
   // Crear usuario
   final userId = _uuid.v4();
@@ -612,6 +614,8 @@ Future<Response> _registerRequest(Request request) async {
   final password = getField<String>(body, 'password') ?? '';
   final name = (getField<String>(body, 'name') ?? '').trim();
   final career = getField<String>(body, 'career');
+  final wantsProfessorRole = body['wantsProfessorRole'] as bool? ?? false;
+  final justification = (getField<String>(body, 'justification') ?? '').trim();
 
   if (email.isEmpty) return badRequest('El campo email es requerido');
   if (password.isEmpty) return badRequest('El campo password es requerido');
@@ -622,6 +626,19 @@ Future<Response> _registerRequest(Request request) async {
       'Solo se permiten emails institucionales (@alumnos.ubiobio.cl o @ubiobio.cl)',
       code: 'EMAIL_NOT_INSTITUTIONAL',
     );
+  }
+
+  if (wantsProfessorRole) {
+    if (email.endsWith('@alumnos.ubiobio.cl')) {
+      return badRequest(
+        'Solo cuentas @ubiobio.cl pueden solicitar el rol de profesor',
+      );
+    }
+    if (justification.isEmpty) {
+      return badRequest(
+        'La justificación es requerida para solicitar el rol de profesor',
+      );
+    }
   }
 
   if (name.length < 2 || name.length > 255) {
@@ -656,6 +673,8 @@ Future<Response> _registerRequest(Request request) async {
     'passwordHash': passwordHash,
     'career': career,
     'code': code,
+    'wantsProfessorRole': wantsProfessorRole,
+    'justification': justification,
   });
 
   await redisSet('reg:$email', payload, ttlSeconds: 600);
@@ -738,7 +757,9 @@ Future<Response> _registerVerify(Request request) async {
   final name = data['name'] as String;
   final passwordHash = data['passwordHash'] as String;
   final career = data['career'] as String?;
-  final role = email.endsWith('@alumnos.ubiobio.cl') ? 'student' : 'professor';
+  // @alumnos → student; @ubiobio.cl → staff (Funcionario). El rol professor
+  // solo se obtiene por aprobación del admin (role_requests).
+  final role = email.endsWith('@alumnos.ubiobio.cl') ? 'student' : 'staff';
 
   // Verificar condición de carrera (podría haberse registrado mientras esperaba)
   final doubleCheck = await db.execute(
@@ -767,6 +788,18 @@ Future<Response> _registerVerify(Request request) async {
       'role': role,
     },
   );
+
+  // Si pidió rol professor en el registro, crear la solicitud pendiente
+  final wantsProfessorRole = data['wantsProfessorRole'] as bool? ?? false;
+  final justification = (data['justification'] as String? ?? '').trim();
+  if (wantsProfessorRole && justification.isNotEmpty) {
+    final reqId = _uuid.v4();
+    final justEsc = justification.replaceAll("'", "''");
+    await db.execute(
+      'INSERT INTO role_requests (id, user_id, justification) '
+      "VALUES ('$reqId'::uuid, '$userId'::uuid, '$justEsc')",
+    );
+  }
 
   // Limpiar Redis
   await redisDel('reg:$email');
