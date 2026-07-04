@@ -529,15 +529,10 @@ Future<Response> _refresh(Request request) async {
   final email = userRow['email'] as String;
   final role = userRow['role'] as String;
 
-  // Rotación: marcar el token actual como revocado
+  // Rotación de tokens. IMPORTANTE: primero se inserta el token nuevo y luego
+  // se revoca el actual encadenándolo con replaced_by. El orden inverso viola
+  // la FK replaced_by → refresh_tokens(id), porque la fila nueva aún no existe.
   final newJti = generateJti();
-  await db.execute(
-    Sql.named(
-      'UPDATE refresh_tokens SET is_revoked = true, replaced_by = @newJti '
-      'WHERE id = @jti',
-    ),
-    parameters: {'newJti': newJti, 'jti': jti},
-  );
 
   // Emitir nuevo par de tokens
   final newAccessToken = generateAccessToken(
@@ -551,6 +546,15 @@ Future<Response> _refresh(Request request) async {
     id: newJti,
     userId: userId,
     tokenHash: newRefreshToken,
+  );
+
+  // Marcar el token actual como revocado y encadenarlo al nuevo.
+  // UUIDs embebidos directamente (no parametrizados): Sql.named con un UUID en
+  // un SET falla en el _prepare de postgres ^3.x. Ambos son UUIDs generados y
+  // firmados por el servidor (jti viene de un JWT verificado), no input crudo.
+  await db.execute(
+    "UPDATE refresh_tokens SET is_revoked = true, replaced_by = '$newJti'::uuid "
+    "WHERE id = '$jti'::uuid",
   );
 
   return jsonOk({
