@@ -104,6 +104,9 @@ Future<Response> _create(Request request) async {
   if (justification.isEmpty) {
     return badRequest('La justificación es requerida');
   }
+  if (justification.length > 300) {
+    return badRequest('La justificación no puede superar los 300 caracteres');
+  }
 
   final pending = await db.execute(
     "SELECT id FROM role_requests WHERE user_id = '$userId'::uuid AND status = 'pending'",

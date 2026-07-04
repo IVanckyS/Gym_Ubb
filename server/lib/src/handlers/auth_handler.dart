@@ -639,6 +639,11 @@ Future<Response> _registerRequest(Request request) async {
         'La justificación es requerida para solicitar el rol de profesor',
       );
     }
+    if (justification.length > 300) {
+      return badRequest(
+        'La justificación no puede superar los 300 caracteres',
+      );
+    }
   }
 
   if (name.length < 2 || name.length > 255) {
