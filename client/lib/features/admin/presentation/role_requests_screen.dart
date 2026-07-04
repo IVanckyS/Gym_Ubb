@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_utils.dart' as du;
 import '../../../shared/services/role_requests_service.dart';
@@ -74,6 +75,9 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
     } on RoleRequestsException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
       _load();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      _load();
     }
   }
 
@@ -112,15 +116,24 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      ctrl.dispose();
+      return;
+    }
+
+    final comment = ctrl.text.trim();
+    ctrl.dispose();
 
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await _service.reject(req['id'] as String, comment: ctrl.text.trim());
+      await _service.reject(req['id'] as String, comment: comment);
       messenger.showSnackBar(const SnackBar(content: Text('Solicitud rechazada')));
       _load();
     } on RoleRequestsException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      _load();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
       _load();
     }
   }
@@ -129,7 +142,14 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colorBgPrimary,
-      appBar: AppBar(title: const Text('Solicitudes de rol')),
+      appBar: AppBar(
+        title: const Text('Solicitudes de rol'),
+        leading: IconButton(
+          icon: const Icon(Icons.home_outlined),
+          tooltip: 'Inicio',
+          onPressed: () => context.go('/home'),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _buildBody(),
@@ -144,9 +164,20 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 120),
+          Icon(Icons.error_outline, size: 48, color: context.colorTextMuted),
+          const SizedBox(height: 12),
           Center(
-            child: Text(_error!,
-                style: TextStyle(color: context.colorTextSecondary)),
+            child: Text(
+              'No se pudieron cargar las solicitudes',
+              style: TextStyle(color: context.colorTextSecondary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: ElevatedButton(
+              onPressed: _load,
+              child: const Text('Reintentar'),
+            ),
           ),
         ],
       );
