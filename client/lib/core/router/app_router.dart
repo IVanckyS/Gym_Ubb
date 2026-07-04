@@ -8,6 +8,7 @@ import '../../features/auth/presentation/reset_password_verify_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/admin/presentation/users_screen.dart';
 import '../../features/admin/presentation/careers_screen.dart';
+import '../../features/admin/presentation/role_requests_screen.dart';
 import '../../features/exercises/presentation/exercises_screen.dart';
 import '../../features/exercises/presentation/exercise_detail_screen.dart';
 import '../../features/onboarding/presentation/terms_screen.dart';
@@ -304,6 +305,10 @@ GoRouter buildRouter(
             GoRoute(
               path: '/admin/careers',
               builder: (context, state) => const CareersScreen(),
+            ),
+            GoRoute(
+              path: '/admin/role-requests',
+              builder: (context, state) => const RoleRequestsScreen(),
             ),
           ],
         ),

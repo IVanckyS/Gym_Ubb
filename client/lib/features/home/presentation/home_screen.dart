@@ -393,6 +393,7 @@ class _QuickActions extends StatelessWidget {
       if (isAdmin) ...[
         _QuickAction(iconName: 'users', label: 'Usuarios', color: AppColors.accentSecondary, route: '/admin/users'),
         _QuickAction(iconName: 'gradcap', label: 'Carreras', color: AppColors.accentGreen, route: '/admin/careers'),
+        _QuickAction(iconName: 'users', label: 'Solicitudes', color: const Color(0xFFFFB347), route: '/admin/role-requests'),
       ],
     ];
 
