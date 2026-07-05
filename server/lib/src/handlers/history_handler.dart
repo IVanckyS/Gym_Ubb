@@ -129,14 +129,16 @@ Future<Response> _getPersonalRecords(Request request) async {
 
   final result = await db.execute(
     'SELECT pr.id, pr.exercise_id, e.name AS exercise_name, '
-    'e.muscle_group::text AS muscle_group, '
-    'pr.weight_kg, pr.reps, '
+    'e.muscle_group::text AS muscle_group, e.exercise_type, '
+    'pr.weight_kg, pr.reps, pr.duration_seconds, '
     "TO_CHAR(pr.achieved_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS achieved_at, "
     'pr.is_validated '
     'FROM personal_records pr '
     'JOIN exercises e ON e.id = pr.exercise_id '
     "WHERE pr.user_id = '$userId'::uuid "
-    'AND pr.weight_kg > 0 AND pr.reps > 0 '
+    "AND ((e.exercise_type = 'isometrico' AND pr.duration_seconds > 0) "
+    "OR (e.exercise_type = 'calistenia' AND pr.reps > 0) "
+    "OR (e.exercise_type NOT IN ('isometrico', 'calistenia') AND pr.weight_kg > 0 AND pr.reps > 0)) "
     'ORDER BY e.name ASC, pr.reps ASC',
   );
 
@@ -147,10 +149,12 @@ Future<Response> _getPersonalRecords(Request request) async {
       'exerciseId': m['exercise_id'],
       'exerciseName': m['exercise_name'],
       'muscleGroup': m['muscle_group'],
+      'exerciseType': m['exercise_type'] ?? 'dinamico',
       'weightKg': m['weight_kg'] != null
           ? double.tryParse(m['weight_kg'].toString())
           : null,
       'reps': m['reps'],
+      'durationSeconds': m['duration_seconds'],
       'achievedAt': m['achieved_at']?.toString(),
       'isValidated': m['is_validated'],
     };

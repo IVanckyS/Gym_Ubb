@@ -881,6 +881,10 @@ class _RecordsTabState extends State<_RecordsTab> {
                         Text(r['userName'] as String? ?? '',
                             style: TextStyle(
                                 color: context.colorTextMuted, fontSize: 12)),
+                        if ((r['career'] as String? ?? '').isNotEmpty)
+                          Text(r['career'] as String,
+                              style: TextStyle(
+                                  color: context.colorTextMuted, fontSize: 11)),
                       ],
                     ),
                   ),
@@ -1011,6 +1015,10 @@ class _ReviewTabState extends State<_ReviewTab> {
                             '${r['userName']}  ·  ${(r['weightKg'] as num?)?.toStringAsFixed(1)} kg × ${r['reps']} rep',
                             style: TextStyle(
                                 color: context.colorTextMuted, fontSize: 12)),
+                        if ((r['career'] as String? ?? '').isNotEmpty)
+                          Text(r['career'] as String,
+                              style: TextStyle(
+                                  color: context.colorTextMuted, fontSize: 11)),
                       ],
                     ),
                   ),

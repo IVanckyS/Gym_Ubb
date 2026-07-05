@@ -117,11 +117,14 @@ class _HistoryScreenState extends State<HistoryScreen>
                   ),
                   ...bestPr.entries.map((entry) {
                     final r = entry.value;
+                    final durationSeconds = r['durationSeconds'] as int?;
                     final rawKg = (r['weightKg'] as num?)?.toDouble();
-                    final weight = rawKg != null
-                        ? toDisplayUnit(rawKg, unit).toStringAsFixed(1)
-                        : '--';
-                    final repCount = r['reps']?.toString() ?? '--';
+                    final weight = durationSeconds != null
+                        ? '${durationSeconds}s'
+                        : (rawKg != null
+                            ? toDisplayUnit(rawKg, unit).toStringAsFixed(1)
+                            : '--');
+                    final repCount = durationSeconds != null ? '--' : (r['reps']?.toString() ?? '--');
                     final date = (r['achievedAt'] as String? ?? '').split('T').first;
                     final validated = r['isValidated'] as bool? ?? false;
 
@@ -1269,10 +1272,13 @@ class _RecordsTabState extends State<_RecordsTab> {
           final r = entry.value;
           final muscleGroup = r['muscleGroup'] as String? ?? '';
           final color = _muscleColors[muscleGroup] ?? AppColors.accentPrimary;
+          final durationSeconds = r['durationSeconds'] as int?;
           final rawKg = (r['weightKg'] as num?)?.toDouble();
-          final weight = rawKg != null
-              ? '${toDisplayUnit(rawKg, unit).toStringAsFixed(1)} ${unit.name}'
-              : '--';
+          final weight = durationSeconds != null
+              ? '${durationSeconds}s'
+              : (rawKg != null
+                  ? '${toDisplayUnit(rawKg, unit).toStringAsFixed(1)} ${unit.name}'
+                  : '--');
           final repCount = r['reps']?.toString() ?? '--';
           final date = du.formatDate(r['achievedAt'] as String?);
           final validated = r['isValidated'] as bool? ?? false;
@@ -1308,19 +1314,21 @@ class _RecordsTabState extends State<_RecordsTab> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(5),
+                          if (durationSeconds == null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Text('$repCount rep',
+                                  style: TextStyle(
+                                      color: color,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
                             ),
-                            child: Text('$repCount rep',
-                                style: TextStyle(
-                                    color: color,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                          const SizedBox(width: 8),
+                            const SizedBox(width: 8),
+                          ],
                           Text(date,
                               style: TextStyle(
                                   color: context.colorTextMuted, fontSize: 11)),

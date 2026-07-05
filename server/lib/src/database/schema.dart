@@ -594,4 +594,10 @@ const List<String> _schemaStatements = [
   // ── Objetivo planeado por serie, para comparar esperado vs. real ─────────
   'ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS target_weight_kg NUMERIC(6,2)',
   'ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS target_reps INTEGER',
+
+  // ── Récord personal por duración (isométrico) o reps sin lastre (calistenia) ─
+  'ALTER TABLE personal_records ADD COLUMN IF NOT EXISTS duration_seconds INTEGER',
+
+  // ── Objetivo de duración planeado por serie, para esperado vs. real isométrico ─
+  'ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS target_duration_seconds INTEGER',
 ];

@@ -78,6 +78,7 @@ class WorkoutService {
     int? rpe,
     double? targetWeightKg,
     int? targetReps,
+    int? targetDurationSeconds,
   }) async {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.workoutLogSet}');
     final res = await http.post(
@@ -94,6 +95,7 @@ class WorkoutService {
         if (rpe != null) 'rpe': rpe,
         if (targetWeightKg != null) 'targetWeightKg': targetWeightKg,
         if (targetReps != null) 'targetReps': targetReps,
+        if (targetDurationSeconds != null) 'targetDurationSeconds': targetDurationSeconds,
       }),
     );
     final data = _unwrap(res);

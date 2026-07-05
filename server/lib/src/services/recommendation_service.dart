@@ -123,6 +123,11 @@ double? _baseWeightForEquipment(String? equipment) {
 /// Cascada de decisión pura (sin DB) para sugerir peso y reps.
 /// Orden: peso fijado en la rutina > progresión doble sobre la última sesión
 /// > 1RM estimado desde el PR > estimado por nivel y peso corporal.
+///
+/// [isBodyweight] es para ejercicios de calistenia: el "peso" es lastre
+/// adicional sobre el peso corporal, así que el escalón final de estimación
+/// (ratios de compuesto / peso base de barra-mancuerna) no aplica — sin
+/// rutina, historial ni PR, el lastre por defecto es 0 (solo peso corporal).
 WeightSuggestion computeSuggestion({
   required String exerciseName,
   required String muscleGroup,
@@ -134,6 +139,7 @@ WeightSuggestion computeSuggestion({
   int? prReps,
   double? userWeightKg,
   required String fitnessLevel,
+  bool isBodyweight = false,
 }) {
   final (loReps, hiReps) = parseRepsRange(repsRange);
   final increment = incrementFor(equipment);
@@ -178,6 +184,10 @@ WeightSuggestion computeSuggestion({
     );
   }
 
+  if (isBodyweight) {
+    return WeightSuggestion(weightKg: 0, reps: loReps, source: 'estimado');
+  }
+
   final ratio = _ratioFor(exerciseName, muscleGroup, fitnessLevel);
   if (ratio != null && userWeightKg != null && userWeightKg > 0) {
     return WeightSuggestion(
@@ -206,6 +216,7 @@ Future<WeightSuggestion> suggestFor({
   double? routineTargetWeightKg,
   double? userWeightKg,
   required String fitnessLevel,
+  bool isBodyweight = false,
 }) async {
   var lastSessionSets = <CompletedSet>[];
   final lastSessionRes = await db.execute(
@@ -262,6 +273,135 @@ Future<WeightSuggestion> suggestFor({
     prWeightKg: prWeightKg,
     prReps: prReps,
     userWeightKg: userWeightKg,
+    fitnessLevel: fitnessLevel,
+    isBodyweight: isBodyweight,
+  );
+}
+
+/// Sugerencia de duración (segundos) para un ejercicio isométrico.
+class DurationSuggestion {
+  const DurationSuggestion({
+    required this.durationSeconds,
+    required this.source,
+    this.lastSession,
+  });
+
+  /// Duración sugerida en segundos. Siempre presente (hay un piso por nivel).
+  final int? durationSeconds;
+
+  /// 'rutina' | 'historial' | 'pr' | 'estimado'
+  final String source;
+
+  /// Presente solo cuando source == 'historial'.
+  final Map<String, dynamic>? lastSession;
+
+  Map<String, dynamic> toMap() => {
+        'durationSeconds': durationSeconds,
+        'source': source,
+        if (lastSession != null) 'lastSession': lastSession,
+      };
+}
+
+/// Hold completado de una sesión previa, usado para la progresión de duración.
+class CompletedHold {
+  const CompletedHold({required this.completed, this.durationSeconds});
+  final bool completed;
+  final int? durationSeconds;
+}
+
+/// Piso de duración por nivel cuando no hay rutina, historial ni PR.
+const _durationEstimateByLevel = {
+  'principiante': 20,
+  'intermedio': 30,
+  'avanzado': 45,
+};
+
+/// Cuánto sumar a la última duración aguantada cuando se progresa (segundos).
+const _durationProgressionStep = 5;
+
+/// Cascada de decisión pura (sin DB) para sugerir duración de un hold isométrico.
+/// Orden: duración fijada en la rutina > progresión sobre la última sesión
+/// (+5s si se completó el hold) > mejor PR de duración > piso estimado por nivel.
+DurationSuggestion computeDurationSuggestion({
+  int? routineTargetDurationSeconds,
+  List<CompletedHold> lastSessionHolds = const [],
+  int? prDurationSeconds,
+  required String fitnessLevel,
+}) {
+  if (routineTargetDurationSeconds != null && routineTargetDurationSeconds > 0) {
+    return DurationSuggestion(
+      durationSeconds: routineTargetDurationSeconds,
+      source: 'rutina',
+    );
+  }
+
+  final completed = lastSessionHolds
+      .where((h) => h.completed && h.durationSeconds != null && h.durationSeconds! > 0)
+      .toList();
+  if (completed.isNotEmpty) {
+    final lastDuration = completed.map((h) => h.durationSeconds!).reduce((a, b) => a > b ? a : b);
+    return DurationSuggestion(
+      durationSeconds: lastDuration + _durationProgressionStep,
+      source: 'historial',
+      lastSession: {'durationSeconds': lastDuration},
+    );
+  }
+
+  if (prDurationSeconds != null && prDurationSeconds > 0) {
+    return DurationSuggestion(durationSeconds: prDurationSeconds, source: 'pr');
+  }
+
+  return DurationSuggestion(
+    durationSeconds: _durationEstimateByLevel[fitnessLevel] ?? _durationEstimateByLevel['principiante'],
+    source: 'estimado',
+  );
+}
+
+/// Wrapper async: consulta la última sesión finalizada y el mejor PR de
+/// duración del usuario para este ejercicio, y delega a [computeDurationSuggestion].
+Future<DurationSuggestion> suggestDurationFor({
+  required String userId,
+  required String exerciseId,
+  int? routineTargetDurationSeconds,
+  required String fitnessLevel,
+}) async {
+  var lastSessionHolds = <CompletedHold>[];
+  final lastSessionRes = await db.execute(
+    "SELECT ws.id FROM workout_sessions ws "
+    "JOIN workout_sets wset ON wset.session_id = ws.id "
+    "WHERE ws.user_id = '$userId'::uuid AND wset.exercise_id = '$exerciseId'::uuid "
+    "AND ws.ended_at IS NOT NULL "
+    "ORDER BY ws.started_at DESC LIMIT 1",
+  );
+  if (lastSessionRes.isNotEmpty) {
+    final sessionId = lastSessionRes.first.toColumnMap()['id'] as String;
+    final setsRes = await db.execute(
+      "SELECT duration_seconds, completed FROM workout_sets "
+      "WHERE session_id = '$sessionId'::uuid AND exercise_id = '$exerciseId'::uuid",
+    );
+    lastSessionHolds = setsRes.map((r) {
+      final m = r.toColumnMap();
+      return CompletedHold(
+        completed: m['completed'] as bool? ?? false,
+        durationSeconds: m['duration_seconds'] as int?,
+      );
+    }).toList();
+  }
+
+  int? prDurationSeconds;
+  final prRes = await db.execute(
+    "SELECT duration_seconds FROM personal_records "
+    "WHERE user_id = '$userId'::uuid AND exercise_id = '$exerciseId'::uuid "
+    "AND duration_seconds IS NOT NULL ORDER BY duration_seconds DESC LIMIT 1",
+  );
+  if (prRes.isNotEmpty) {
+    prDurationSeconds = prRes.first.toColumnMap()['duration_seconds'] as int?;
+  }
+
+  return computeDurationSuggestion(
+    routineTargetDurationSeconds: routineTargetDurationSeconds,
+    lastSessionHolds: lastSessionHolds,
+    prDurationSeconds: prDurationSeconds,
     fitnessLevel: fitnessLevel,
   );
 }

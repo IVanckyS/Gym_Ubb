@@ -78,6 +78,7 @@ Map<String, dynamic> _setToMap(Map<String, dynamic> row) => {
           ? double.tryParse(row['target_weight_kg'].toString())
           : null,
       'targetReps': row['target_reps'],
+      'targetDurationSeconds': row['target_duration_seconds'],
     };
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -181,6 +182,7 @@ Future<Response> _logSet(Request request) async {
   final rpe = body['rpe'] as int?;
   final targetWeightKg = (body['targetWeightKg'] as num?)?.toDouble();
   final targetReps = body['targetReps'] as int?;
+  final targetDurationSeconds = body['targetDurationSeconds'] as int?;
 
   if (sessionId.isEmpty) return badRequest('sessionId es requerido');
   if (exerciseId.isEmpty) return badRequest('exerciseId es requerido');
@@ -208,6 +210,7 @@ Future<Response> _logSet(Request request) async {
     if (rpe != null) setClauses.add('rpe = $rpe');
     if (targetWeightKg != null) setClauses.add('target_weight_kg = $targetWeightKg');
     if (targetReps != null) setClauses.add('target_reps = $targetReps');
+    if (targetDurationSeconds != null) setClauses.add('target_duration_seconds = $targetDurationSeconds');
 
     if (setClauses.isNotEmpty) {
       await db.execute(
@@ -218,7 +221,7 @@ Future<Response> _logSet(Request request) async {
     final updated = await db.execute(
       "SELECT ws.id, ws.session_id, ws.exercise_id, e.name AS exercise_name, "
       "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe, "
-      "ws.target_weight_kg, ws.target_reps "
+      "ws.target_weight_kg, ws.target_reps, ws.target_duration_seconds "
       "FROM workout_sets ws JOIN exercises e ON e.id = ws.exercise_id "
       "WHERE ws.id = '$setId'::uuid",
     );
@@ -233,24 +236,32 @@ Future<Response> _logSet(Request request) async {
   final rpeVal = rpe != null ? '$rpe' : 'NULL';
   final targetWeightVal = targetWeightKg != null ? '$targetWeightKg' : 'NULL';
   final targetRepsVal = targetReps != null ? '$targetReps' : 'NULL';
+  final targetDurationVal = targetDurationSeconds != null ? '$targetDurationSeconds' : 'NULL';
 
   await db.execute(
-    "INSERT INTO workout_sets (id, session_id, exercise_id, set_number, weight_kg, reps, duration_seconds, completed, rpe, target_weight_kg, target_reps) "
+    "INSERT INTO workout_sets (id, session_id, exercise_id, set_number, weight_kg, reps, duration_seconds, completed, rpe, target_weight_kg, target_reps, target_duration_seconds) "
     "VALUES ('$setId'::uuid, '$sessionId'::uuid, '$exerciseId'::uuid, $setNumber, "
-    "$weightVal, $repsVal, $durationVal, $completed, $rpeVal, $targetWeightVal, $targetRepsVal)",
+    "$weightVal, $repsVal, $durationVal, $completed, $rpeVal, $targetWeightVal, $targetRepsVal, $targetDurationVal)",
   );
 
   final inserted = await db.execute(
     "SELECT ws.id, ws.session_id, ws.exercise_id, e.name AS exercise_name, "
     "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe, "
-    "ws.target_weight_kg, ws.target_reps "
+    "ws.target_weight_kg, ws.target_reps, ws.target_duration_seconds "
     "FROM workout_sets ws JOIN exercises e ON e.id = ws.exercise_id "
     "WHERE ws.id = '$setId'::uuid",
   );
 
-  // Solo guardar PR si el set tiene peso real y reps reales (evita PRs fantasma con weight=0)
-  if (completed && weightKg != null && weightKg > 0 && reps != null && reps > 0) {
-    await _checkAndSavePR(userId, exerciseId, weightKg, reps, sessionId);
+  // Solo guardar PR si el set tiene datos reales para su tipo (evita PRs fantasma)
+  if (completed) {
+    await _checkAndSavePR(
+      userId,
+      exerciseId,
+      weightKg: weightKg,
+      reps: reps,
+      durationSeconds: durationSeconds,
+      sessionId: sessionId,
+    );
   }
 
   return jsonCreated({'set': _setToMap(inserted.first.toColumnMap())});
@@ -329,7 +340,8 @@ Future<Response> _getHistory(Request request) async {
   final result = await db.execute(
     'SELECT ws.id, ws.user_id, ws.routine_id, ws.routine_day_id, '
     'r.name AS routine_name, rd.label AS day_label, '
-    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes '
+    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes, '
+    'ws.status::text AS status, ws.early_finish_reason '
     'FROM workout_sessions ws '
     'LEFT JOIN routines r ON r.id = ws.routine_id '
     'LEFT JOIN routine_days rd ON rd.id = ws.routine_day_id '
@@ -378,7 +390,8 @@ Future<Response> _getSession(Request request, String id) async {
   final sessionResult = await db.execute(
     'SELECT ws.id, ws.user_id, ws.routine_id, ws.routine_day_id, '
     'r.name AS routine_name, rd.label AS day_label, '
-    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes '
+    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes, '
+    'ws.status::text AS status, ws.early_finish_reason '
     'FROM workout_sessions ws '
     'LEFT JOIN routines r ON r.id = ws.routine_id '
     'LEFT JOIN routine_days rd ON rd.id = ws.routine_day_id '
@@ -451,8 +464,8 @@ Future<Response> _getSession(Request request, String id) async {
     }).toList();
   }
 
-  // Adjuntar sugerencia de peso a ejercicios dinámicos con rutina asociada.
-  // Isométricos y calistenia quedan fuera de alcance de esta iteración.
+  // Adjuntar sugerencia a los ejercicios con rutina asociada: peso para
+  // dinámicos y calistenia (lastre), duración para isométricos.
   if (routineDayId != null && exercises.isNotEmpty) {
     final userRow = await db.execute(
       "SELECT weight_kg, fitness_level::text AS fitness_level FROM users WHERE id = '$userId'::uuid",
@@ -465,7 +478,17 @@ Future<Response> _getSession(Request request, String id) async {
         : 'principiante';
 
     for (final ex in exercises) {
-      if (ex['exerciseType'] != 'dinamico') continue;
+      final exerciseType = ex['exerciseType'] as String? ?? 'dinamico';
+      if (exerciseType == 'isometrico') {
+        final suggestion = await suggestDurationFor(
+          userId: userId,
+          exerciseId: ex['exerciseId'] as String,
+          routineTargetDurationSeconds: ex['targetDurationSeconds'] as int?,
+          fitnessLevel: fitnessLevel,
+        );
+        ex['suggestion'] = suggestion.toMap();
+        continue;
+      }
       final suggestion = await suggestFor(
         userId: userId,
         exerciseId: ex['exerciseId'] as String,
@@ -476,6 +499,7 @@ Future<Response> _getSession(Request request, String id) async {
         routineTargetWeightKg: ex['targetWeightKg'] as double?,
         userWeightKg: userWeightKg,
         fitnessLevel: fitnessLevel,
+        isBodyweight: exerciseType == 'calistenia',
       );
       ex['suggestion'] = suggestion.toMap();
     }
@@ -486,7 +510,7 @@ Future<Response> _getSession(Request request, String id) async {
     final setsResult = await db.execute(
       'SELECT wset.id, wset.session_id, wset.exercise_id, e.name AS exercise_name, '
       'wset.set_number, wset.weight_kg, wset.reps, wset.duration_seconds, wset.completed, wset.rpe, '
-      'wset.target_weight_kg, wset.target_reps '
+      'wset.target_weight_kg, wset.target_reps, wset.target_duration_seconds '
       'FROM workout_sets wset JOIN exercises e ON e.id = wset.exercise_id '
       "WHERE wset.session_id = '$id'::uuid "
       'ORDER BY wset.exercise_id, wset.set_number ASC',
@@ -728,9 +752,10 @@ Future<Response> _cancelSession(Request request, String sessionId) async {
   );
   if (check.isEmpty) return notFound('Sesión no encontrada o ya finalizada');
 
-  // Eliminar PRs fantasma (weight=0) generados en esta sesión y desvincular el resto
+  // Eliminar PRs fantasma (weight=0 Y reps=0 — nunca es un PR real de ningún tipo)
+  // generados en esta sesión y desvincular el resto.
   await db.execute(
-    "DELETE FROM personal_records WHERE session_id = '$sessionId'::uuid AND weight_kg = 0",
+    "DELETE FROM personal_records WHERE session_id = '$sessionId'::uuid AND weight_kg = 0 AND reps = 0",
   );
   await db.execute(
     "UPDATE personal_records SET session_id = NULL WHERE session_id = '$sessionId'::uuid",
@@ -749,38 +774,81 @@ Future<Response> _cancelSession(Request request, String sessionId) async {
 // ── Helpers privados ─────────────────────────────────────────────────────────
 
 /// Verifica si el set completado es un récord personal y lo guarda si aplica.
+/// Bifurca por tipo de ejercicio:
+/// - dinamico: dispara con weightKg > 0 && reps > 0, compara por weightKg.
+/// - calistenia: dispara con reps > 0 (weightKg=lastre puede ser 0/null), compara por weightKg.
+/// - isometrico: dispara con durationSeconds > 0, guarda weight_kg=0/reps=1 (sentinels), compara por duration_seconds.
 Future<void> _checkAndSavePR(
   String userId,
-  String exerciseId,
-  double weightKg,
-  int reps,
-  String sessionId,
-) async {
+  String exerciseId, {
+  double? weightKg,
+  int? reps,
+  int? durationSeconds,
+  required String sessionId,
+}) async {
   try {
+    final exRow = await db.execute(
+      "SELECT exercise_type FROM exercises WHERE id = '$exerciseId'::uuid",
+    );
+    if (exRow.isEmpty) return;
+    final exerciseType = exRow.first.toColumnMap()['exercise_type'] as String? ?? 'dinamico';
+
+    double prWeightKg;
+    int prReps;
+    int? prDurationSeconds;
+    bool compareByDuration;
+
+    if (exerciseType == 'isometrico') {
+      if (durationSeconds == null || durationSeconds <= 0) return;
+      prWeightKg = 0;
+      prReps = 1;
+      prDurationSeconds = durationSeconds;
+      compareByDuration = true;
+    } else if (exerciseType == 'calistenia') {
+      if (reps == null || reps <= 0) return;
+      prWeightKg = weightKg ?? 0;
+      prReps = reps;
+      compareByDuration = false;
+    } else {
+      if (weightKg == null || weightKg <= 0 || reps == null || reps <= 0) return;
+      prWeightKg = weightKg;
+      prReps = reps;
+      compareByDuration = false;
+    }
+
     final existing = await db.execute(
-      "SELECT id, weight_kg FROM personal_records "
-      "WHERE user_id = '$userId'::uuid AND exercise_id = '$exerciseId'::uuid AND reps = $reps",
+      "SELECT id, weight_kg, duration_seconds FROM personal_records "
+      "WHERE user_id = '$userId'::uuid AND exercise_id = '$exerciseId'::uuid AND reps = $prReps",
     );
 
     if (existing.isEmpty) {
       final prId = _uuid.v4();
+      final durationVal = prDurationSeconds != null ? '$prDurationSeconds' : 'NULL';
       await db.execute(
-        "INSERT INTO personal_records (id, user_id, exercise_id, weight_kg, reps, session_id) "
-        "VALUES ('$prId'::uuid, '$userId'::uuid, '$exerciseId'::uuid, $weightKg, $reps, '$sessionId'::uuid)",
+        "INSERT INTO personal_records (id, user_id, exercise_id, weight_kg, reps, duration_seconds, session_id) "
+        "VALUES ('$prId'::uuid, '$userId'::uuid, '$exerciseId'::uuid, $prWeightKg, $prReps, $durationVal, '$sessionId'::uuid)",
       );
+      return;
+    }
+
+    final row = existing.first.toColumnMap();
+    final prId = row['id'] as String;
+    var isBetter = false;
+    if (compareByDuration) {
+      final currentDuration = row['duration_seconds'] as int? ?? 0;
+      isBetter = prDurationSeconds! > currentDuration;
     } else {
-      final currentWeight = double.tryParse(
-            existing.first.toColumnMap()['weight_kg']?.toString() ?? '0',
-          ) ??
-          0;
-      if (weightKg > currentWeight) {
-        final prId = existing.first.toColumnMap()['id'] as String;
-        await db.execute(
-          "UPDATE personal_records SET weight_kg = $weightKg, "
-          "session_id = '$sessionId'::uuid, achieved_at = NOW(), is_validated = false "
-          "WHERE id = '$prId'::uuid",
-        );
-      }
+      final currentWeight = double.tryParse(row['weight_kg']?.toString() ?? '0') ?? 0;
+      isBetter = prWeightKg > currentWeight;
+    }
+
+    if (isBetter) {
+      final durationVal = prDurationSeconds != null ? '$prDurationSeconds' : 'NULL';
+      await db.execute(
+        "UPDATE personal_records SET weight_kg = $prWeightKg, duration_seconds = $durationVal, "
+        "session_id = '$sessionId'::uuid, achieved_at = NOW(), is_validated = false "
+        "WHERE id = '$prId'::uuid",
+      );
     }
   } catch (_) {
     // No bloquear el flujo si falla el PR

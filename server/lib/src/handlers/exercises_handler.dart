@@ -542,7 +542,7 @@ Future<Response> _searchExercises(Request request) async {
     "SELECT e.id, e.name, e.muscle_group::text AS muscle_group "
     'FROM exercises e '
     "WHERE e.name ILIKE '%$q%' "
-    'AND e.is_published = true '
+    'AND e.is_active = true '
     '$excludeClause '
     'ORDER BY e.name '
     'LIMIT $limit',

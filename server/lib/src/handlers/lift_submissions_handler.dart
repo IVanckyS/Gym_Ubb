@@ -7,6 +7,15 @@ import '../utils/response.dart';
 
 final _uuid = Uuid();
 
+// status es un ENUM (lift_submission_status) — postgres ^3.x lo devuelve como
+// UndecodedBytes si no se castea ::text, así que no se puede usar ls.* aquí.
+const _submissionSelectCols =
+    'ls.id, ls.user_id, ls.exercise_id, ls.weight_kg, ls.reps, '
+    'ls.location_name, ls.location_lat, ls.location_lng, ls.description, '
+    'ls.was_witnessed, ls.witness_name, ls.video_url, '
+    "ls.status::text AS status, ls.reviewed_by, ls.review_comment, "
+    'ls.reviewed_at, ls.is_record_breaking, ls.created_at, ls.updated_at';
+
 Router get liftSubmissionsHandler {
   final router = Router();
 
@@ -35,6 +44,7 @@ Map<String, dynamic> _submissionToMap(Map<String, dynamic> r) => {
       'id': r['id'],
       'userId': r['user_id'],
       'userName': r['user_name'],
+      'career': r['career'],
       'exerciseId': r['exercise_id'],
       'exerciseName': r['exercise_name'],
       'weightKg': r['weight_kg'] != null
@@ -87,7 +97,7 @@ Future<Response> _create(Request request) async {
 
   // Verificar que el ejercicio existe y es rankeable
   final exCheck = await db.execute(
-    "SELECT id, is_rankeable FROM exercises WHERE id = '$exerciseId'::uuid AND is_published = true",
+    "SELECT id, is_rankeable FROM exercises WHERE id = '$exerciseId'::uuid AND is_active = true",
   );
   if (exCheck.isEmpty) return notFound('Ejercicio no encontrado');
   final isRankeable = exCheck.first.toColumnMap()['is_rankeable'] as bool? ?? false;
@@ -153,7 +163,7 @@ Future<Response> _list(Request request) async {
   final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
   final result = await db.execute(
-    'SELECT ls.*, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, u.career AS career, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
@@ -176,7 +186,7 @@ Future<Response> _getOne(Request request, String id) async {
 
 Future<Response> _fetchOne(String id) async {
   final result = await db.execute(
-    'SELECT ls.*, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, u.career AS career, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
@@ -313,9 +323,9 @@ Future<Response> _rankings(Request request) async {
   final whereEx = exerciseId != null ? "AND ls.exercise_id = '$exerciseId'::uuid" : '';
 
   final result = await db.execute(
-    'SELECT ls.id, ls.user_id, u.name AS user_name, ls.exercise_id, '
+    'SELECT ls.id, ls.user_id, u.name AS user_name, u.career AS career, ls.exercise_id, '
     'e.name AS exercise_name, ls.weight_kg, ls.reps, '
-    'ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, '
+    "ls.status::text AS status, ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, "
     'ls.description, ls.was_witnessed, ls.witness_name, '
     'NULL::text AS reviewer_name '
     'FROM lift_submissions ls '
@@ -337,9 +347,9 @@ Future<Response> _records(Request request) async {
 
   final result = await db.execute(
     'SELECT DISTINCT ON (ls.exercise_id, ls.reps) '
-    'ls.id, ls.user_id, u.name AS user_name, ls.exercise_id, '
+    'ls.id, ls.user_id, u.name AS user_name, u.career AS career, ls.exercise_id, '
     'e.name AS exercise_name, ls.weight_kg, ls.reps, '
-    'ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, '
+    "ls.status::text AS status, ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, "
     'ls.description, ls.was_witnessed, ls.witness_name, '
     'NULL::text AS reviewer_name '
     'FROM lift_submissions ls '
