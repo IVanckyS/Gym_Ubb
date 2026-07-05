@@ -687,7 +687,12 @@ class _ExerciseRow extends StatelessWidget {
     final rest = exercise['restSeconds'] as int? ?? 90;
     final isIso = (exercise['exerciseType'] as String? ?? 'dinamico') == 'isometrico';
     final duration = (exercise['durationSeconds'] as int?) ?? 30;
-    final badge = isIso ? '$sets×${duration}s' : '$sets×$reps';
+    final targetWeightKg = (exercise['targetWeightKg'] as num?)?.toDouble();
+    final badge = isIso
+        ? '$sets×${duration}s'
+        : (targetWeightKg != null
+            ? '$sets×$reps · ${targetWeightKg.toStringAsFixed(1)}kg'
+            : '$sets×$reps');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

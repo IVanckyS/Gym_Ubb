@@ -86,6 +86,7 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
               'reps': (ex['reps'] ?? '8-12').toString(),
               'restSeconds': (ex['restSeconds'] as num?)?.toInt() ?? 90,
               'durationSeconds': (ex['durationSeconds'] as num?)?.toInt(),
+              'targetWeightKg': (ex['targetWeightKg'] as num?)?.toDouble(),
             })
             .toList();
       }
@@ -122,12 +123,14 @@ class _CreateRoutineScreenState extends State<CreateRoutineScreen> {
           final exerciseId = ex['id']?.toString() ?? '';
           if (exerciseId.isEmpty) continue;
           final isIso = (ex['exerciseType'] ?? 'dinamico').toString() == 'isometrico';
+          final targetWeightKg = (ex['targetWeightKg'] as num?)?.toDouble();
           exercises.add(<String, dynamic>{
             'exerciseId': exerciseId,
             'sets': (ex['sets'] as num?)?.toInt() ?? 3,
             'reps': (ex['reps'] ?? '8-12').toString(),
             'restSeconds': (ex['restSeconds'] as num?)?.toInt() ?? 90,
             if (isIso) 'durationSeconds': (ex['durationSeconds'] as num?)?.toInt() ?? 30,
+            if (targetWeightKg != null) 'targetWeightKg': targetWeightKg,
             'orderIndex': j,
           });
         }
@@ -681,9 +684,10 @@ class _Step3State extends State<_Step3> {
         reps: '${ex['reps'] ?? '8-12'}',
         restSeconds: (ex['restSeconds'] as num?)?.toInt() ?? 90,
         durationSeconds: (ex['durationSeconds'] as num?)?.toInt() ?? 30,
+        targetWeightKg: (ex['targetWeightKg'] as num?)?.toDouble(),
         isIsometric: isIso,
         goal: widget.goal,
-        onSave: (sets, reps, rest, duration) {
+        onSave: (sets, reps, rest, duration, targetWeightKg) {
           setState(() {
             widget.dayExercises[day]![index] = <String, dynamic>{
               ...ex,
@@ -691,6 +695,7 @@ class _Step3State extends State<_Step3> {
               'reps': reps,
               'restSeconds': rest,
               if (isIso) 'durationSeconds': duration,
+              'targetWeightKg': targetWeightKg,
             };
           });
         },
@@ -1182,6 +1187,7 @@ class _ExerciseEditDialog extends StatefulWidget {
     required this.reps,
     required this.restSeconds,
     required this.durationSeconds,
+    required this.targetWeightKg,
     required this.isIsometric,
     required this.goal,
     required this.onSave,
@@ -1192,9 +1198,10 @@ class _ExerciseEditDialog extends StatefulWidget {
   final String reps;
   final int restSeconds;
   final int durationSeconds;
+  final double? targetWeightKg;
   final bool isIsometric;
   final String goal;
-  final void Function(int sets, String reps, int restSeconds, int durationSeconds) onSave;
+  final void Function(int sets, String reps, int restSeconds, int durationSeconds, double? targetWeightKg) onSave;
 
   @override
   State<_ExerciseEditDialog> createState() => _ExerciseEditDialogState();
@@ -1206,6 +1213,7 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
   late int _restSeconds;
   late int _durationSeconds;
   late TextEditingController _repsCtrl;
+  late TextEditingController _weightCtrl;
 
   // Presets por objetivo: (label, sets, reps, rest)
   static const _presets = {
@@ -1223,11 +1231,15 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
     _restSeconds = widget.restSeconds;
     _durationSeconds = widget.durationSeconds;
     _repsCtrl = TextEditingController(text: widget.reps);
+    _weightCtrl = TextEditingController(
+      text: widget.targetWeightKg != null ? widget.targetWeightKg!.toStringAsFixed(1) : '',
+    );
   }
 
   @override
   void dispose() {
     _repsCtrl.dispose();
+    _weightCtrl.dispose();
     super.dispose();
   }
 
@@ -1345,6 +1357,24 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
               ),
             ],
             SizedBox(height: 16),
+            if (!widget.isIsometric) ...[
+              Text('Peso objetivo (kg) — opcional', style: TextStyle(color: context.colorTextMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _weightCtrl,
+                style: TextStyle(color: context.colorTextPrimary, fontSize: 14),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  hintText: 'Dejar vacío para sugerencia automática',
+                  hintStyle: TextStyle(color: context.colorTextMuted, fontSize: 12),
+                  filled: true,
+                  fillColor: context.colorBgTertiary,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
             // Descanso
             Text('Descanso entre series', style: TextStyle(color: context.colorTextMuted, fontSize: 11, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -1369,7 +1399,8 @@ class _ExerciseEditDialogState extends State<_ExerciseEditDialog> {
         FilledButton(
           onPressed: () {
             final reps = _repsCtrl.text.trim().isEmpty ? _reps : _repsCtrl.text.trim();
-            widget.onSave(_sets, reps, _restSeconds, _durationSeconds);
+            final targetWeightKg = double.tryParse(_weightCtrl.text.trim());
+            widget.onSave(_sets, reps, _restSeconds, _durationSeconds, targetWeightKg);
             Navigator.pop(context);
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.accentPrimary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
