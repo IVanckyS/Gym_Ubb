@@ -56,6 +56,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   final Map<String, bool> _setCompleted = {};
   final Map<String, bool> _setLoading = {};
 
+  // Objetivo planeado por set (en kg / reps), key = "$exerciseId-$setNumber"
+  final Map<String, double?> _targetWeightKg = {};
+  final Map<String, int?> _targetReps = {};
+
   // Tipo de ejercicio por exerciseId: 'dinamico' | 'isometrico'
   final Map<String, String> _exerciseTypes = {};
 
@@ -114,15 +118,33 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       final targetDuration = (ex['targetDurationSeconds'] as num?)?.toInt();
       final sets = (ex['sets'] as List? ?? []).cast<Map<String, dynamic>>();
 
+      final suggestion = ex['suggestion'] as Map<String, dynamic>?;
+      final suggWeightKg = (suggestion?['weightKg'] as num?)?.toDouble();
+      final suggReps = suggestion?['reps'] as int?;
+
       for (int i = 1; i <= targetSets; i++) {
         final key = '$exerciseId-$i';
         final existing = sets.where((s) => s['setNumber'] == i).firstOrNull;
 
         // Peso: convertir de kg a unidad preferida si hay valor existente
         final rawKg = (existing?['weightKg'] as num?)?.toDouble();
+        final existingTargetWeightKg = (existing?['targetWeightKg'] as num?)?.toDouble();
+        final existingTargetReps = existing?['targetReps'] as int?;
+
+        // El objetivo queda "congelado" en el primer valor conocido: lo que ya
+        // se guardó en un intento previo, o si no, la sugerencia vigente.
+        final effectiveTargetWeightKg =
+            existingTargetWeightKg ?? (isIsometric ? null : suggWeightKg);
+        final effectiveTargetReps =
+            existingTargetReps ?? (isIsometric ? null : suggReps);
+        _targetWeightKg[key] = effectiveTargetWeightKg;
+        _targetReps[key] = effectiveTargetReps;
+
         final weightText = rawKg != null
             ? toDisplayUnit(rawKg, _unit).toStringAsFixed(1)
-            : '';
+            : (effectiveTargetWeightKg != null
+                ? toDisplayUnit(effectiveTargetWeightKg, _unit).toStringAsFixed(1)
+                : '');
 
         // Segunda columna: reps para dinámicos, duración para isométricos
         // Para isométricos, si no hay set previo, pre-llenar con el target de la rutina
@@ -130,7 +152,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             ? (existing?['durationSeconds'] != null
                 ? existing!['durationSeconds'].toString()
                 : (targetDuration != null ? targetDuration.toString() : ''))
-            : (existing?['reps'] != null ? existing!['reps'].toString() : '');
+            : (existing?['reps'] != null
+                ? existing!['reps'].toString()
+                : (effectiveTargetReps != null ? effectiveTargetReps.toString() : ''));
 
         _weightControllers.putIfAbsent(key, () => TextEditingController(text: weightText));
         _repsControllers.putIfAbsent(key, () => TextEditingController(text: secondText));
@@ -228,6 +252,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         reps: isIsometric ? null : int.tryParse(secondText),
         durationSeconds: isIsometric ? int.tryParse(secondText) : null,
         completed: nowCompleted,
+        targetWeightKg: isIsometric ? null : _targetWeightKg[key],
+        targetReps: isIsometric ? null : _targetReps[key],
       );
       setState(() {
         _setCompleted[key] = nowCompleted;
@@ -418,6 +444,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       isIsometric: isIsometric,
                       isCalistenia: isCalistenia,
                       weightUnitLabel: _unit == WeightUnit.lbs ? 'LBS' : 'KG',
+                      unit: _unit,
+                      targetWeightKg: _targetWeightKg,
+                      targetReps: _targetReps,
                     );
                   },
                 ),
@@ -622,6 +651,9 @@ class _ExerciseCard extends StatefulWidget {
     this.isIsometric = false,
     this.isCalistenia = false,
     this.weightUnitLabel = 'KG',
+    this.unit = WeightUnit.kg,
+    this.targetWeightKg = const {},
+    this.targetReps = const {},
   });
 
   final Map<String, dynamic> exercise;
@@ -633,6 +665,9 @@ class _ExerciseCard extends StatefulWidget {
   final bool isIsometric;
   final bool isCalistenia;
   final String weightUnitLabel;
+  final WeightUnit unit;
+  final Map<String, double?> targetWeightKg;
+  final Map<String, int?> targetReps;
 
   @override
   State<_ExerciseCard> createState() => _ExerciseCardState();
@@ -723,6 +758,17 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                             fontSize: 12,
                           ),
                         ),
+                        if (ex['suggestion'] != null && (ex['suggestion'] as Map)['weightKg'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _suggestionLabel(ex['suggestion'] as Map<String, dynamic>, widget.unit),
+                            style: const TextStyle(
+                              color: AppColors.accentPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -806,6 +852,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                     final key = '$exerciseId-$setNumber';
                     final completed = widget.setCompleted[key] ?? false;
                     final loading = widget.setLoading[key] ?? false;
+                    final targetKg = widget.targetWeightKg[key];
 
                     return _SetRow(
                       setNumber: setNumber,
@@ -815,6 +862,10 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                       loading: loading,
                       isIsometric: widget.isIsometric,
                       onToggle: () => widget.onToggleSet(exerciseId, setNumber, restSeconds),
+                      targetWeightDisplay: !widget.isIsometric && targetKg != null
+                          ? toDisplayUnit(targetKg, widget.unit)
+                          : null,
+                      targetReps: widget.isIsometric ? null : widget.targetReps[key],
                     );
                   }),
                 ],
@@ -835,6 +886,8 @@ class _SetRow extends StatelessWidget {
     required this.loading,
     required this.onToggle,
     this.isIsometric = false,
+    this.targetWeightDisplay,
+    this.targetReps,
   });
 
   final int setNumber;
@@ -844,22 +897,37 @@ class _SetRow extends StatelessWidget {
   final bool loading;
   final VoidCallback onToggle;
   final bool isIsometric;
+  final double? targetWeightDisplay;
+  final int? targetReps;
+
+  /// null = sin objetivo que comparar; true = cumplió o superó; false = por debajo.
+  bool? get _meetsTarget {
+    if (!completed) return null;
+    if (targetWeightDisplay == null && targetReps == null) return null;
+    final w = double.tryParse(weightController.text.trim());
+    final r = int.tryParse(repsController.text.trim());
+    final weightOk = targetWeightDisplay == null ||
+        (w != null && w >= targetWeightDisplay! - 0.01);
+    final repsOk = targetReps == null || (r != null && r >= targetReps!);
+    return weightOk && repsOk;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final meets = _meetsTarget;
+    final statusColor = meets == false ? const Color(0xFFFFB347) : AppColors.accentGreen;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: completed
-            ? AppColors.accentGreen.withValues(alpha: 0.08)
+            ? statusColor.withValues(alpha: 0.08)
             : context.colorBgTertiary,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: completed
-              ? AppColors.accentGreen.withValues(alpha: 0.3)
-              : Colors.transparent,
+          color: completed ? statusColor.withValues(alpha: 0.3) : Colors.transparent,
         ),
       ),
       child: Row(
@@ -871,7 +939,7 @@ class _SetRow extends StatelessWidget {
               '$setNumber',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: completed ? AppColors.accentGreen : context.colorTextMuted,
+                color: completed ? statusColor : context.colorTextMuted,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
               ),
@@ -921,14 +989,10 @@ class _SetRow extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: completed
-                            ? AppColors.accentGreen
-                            : context.colorBgSecondary,
+                        color: completed ? statusColor : context.colorBgSecondary,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: completed
-                              ? AppColors.accentGreen
-                              : context.colorBorder,
+                          color: completed ? statusColor : context.colorBorder,
                         ),
                       ),
                       child: Icon(
@@ -942,6 +1006,30 @@ class _SetRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _suggestionLabel(Map<String, dynamic> suggestion, WeightUnit unit) {
+  final weightKg = (suggestion['weightKg'] as num).toDouble();
+  final reps = suggestion['reps'] as int?;
+  final source = suggestion['source'] as String? ?? 'estimado';
+  final unitLabel = unit == WeightUnit.lbs ? 'lbs' : 'kg';
+  final display = toDisplayUnit(weightKg, unit).toStringAsFixed(1);
+  final base = '⚡ Sugerido: $display $unitLabel${reps != null ? ' × $reps' : ''}';
+
+  switch (source) {
+    case 'rutina':
+      return '$base · Peso de tu rutina';
+    case 'historial':
+      final last = suggestion['lastSession'] as Map<String, dynamic>?;
+      final lastWeightKg = (last?['weightKg'] as num?)?.toDouble();
+      if (lastWeightKg == null) return base;
+      final lastDisplay = toDisplayUnit(lastWeightKg, unit).toStringAsFixed(1);
+      return '$base · Último: $lastDisplay $unitLabel';
+    case 'pr':
+      return '$base · Estimado desde tu récord';
+    default:
+      return '$base · Estimado para tu nivel';
   }
 }
 
