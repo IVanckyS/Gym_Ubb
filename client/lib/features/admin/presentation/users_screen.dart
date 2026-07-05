@@ -383,9 +383,13 @@ class _UserCard extends StatelessWidget {
                     children: [
                       Icon(Icons.school_outlined, size: 12, color: context.colorTextMuted),
                       SizedBox(width: 4),
-                      Text(
-                        user['career'] as String,
-                        style: TextStyle(color: context.colorTextMuted, fontSize: 12),
+                      Expanded(
+                        child: Text(
+                          user['career'] as String,
+                          style: TextStyle(color: context.colorTextMuted, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
