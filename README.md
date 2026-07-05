@@ -48,6 +48,7 @@ gym_ubb/
 │       │   ├── events_handler.dart           ← eventos, intereses, CRUD
 │       │   ├── notifications_handler.dart    ← sistema, unread, marcar leída
 │       │   ├── lift_submissions_handler.dart ← postulaciones, aprobar/rechazar
+│       │   ├── role_requests_handler.dart    ← solicitudes de rol professor (staff → aprobación admin)
 │       │   └── hiit_handler.dart             ← plantillas HIIT + sesiones completadas
 │       ├── middleware/
 │       │   ├── auth_middleware.dart
@@ -56,12 +57,14 @@ gym_ubb/
 │       ├── services/
 │       │   ├── jwt_service.dart
 │       │   ├── email_service.dart            ← envío OTP por SMTP (fallback a logs en dev)
-│       │   └── rate_limit_service.dart
+│       │   ├── storage_service.dart          ← subida a Cloudflare R2 (fallback local /uploads)
+│       │   ├── rate_limit_service.dart
+│       │   └── recommendation_service.dart   ← sugerencia de peso/duración al iniciar sesión (con tests unitarios)
 │       ├── database/
 │       │   ├── connection.dart
 │       │   ├── redis_client.dart
 │       │   ├── schema.dart
-│       │   └── seed.dart                     ← limpia y resiembra ejercicios en cada arranque dev
+│       │   └── seed.dart                     ← siembra inicial idempotente; preserva datos de usuario entre reinicios
 │       └── utils/response.dart
 │
 └── client/
@@ -113,17 +116,17 @@ Flujo de registro:
 
 | Tabla | Descripción |
 |---|---|
-| `users` | Perfil, rol, datos físicos, preferencias |
+| `users` | Perfil, rol, datos físicos (peso, altura, nivel de entrenamiento), preferencias |
 | `careers` | Carreras UBB (soft delete) |
 | `refresh_tokens` | Rotación + cadena replaced_by |
 | `exercises` | Catálogo muscular: grupo, dificultad, tipo (dinámico/isométrico/calistenia), is_rankeable |
 | `routines` | Rutinas personales y públicas |
 | `routine_days` | Días de una rutina |
-| `routine_day_exercises` | Ejercicios por día con sets/reps/descanso + duration_seconds (isométricos) |
+| `routine_day_exercises` | Ejercicios por día con sets/reps/descanso + duration_seconds (isométricos) + target_weight_kg (peso objetivo) |
 | `joint_exercises` | Ejercicios de articulaciones (8 familias) |
 | `workout_sessions` | Sesiones activas e historial |
-| `workout_sets` | Series completadas por sesión |
-| `personal_records` | PR por usuario+ejercicio+reps (auto-upsert) |
+| `workout_sets` | Series completadas + objetivo planeado por serie (target_weight_kg / target_reps / target_duration_seconds) |
+| `personal_records` | PR por usuario+ejercicio+reps + duration_seconds (isométricos) |
 | `body_measurements` | Medidas corporales por fecha |
 | `articles` | Artículos educativos con tags, image_url, bibliography, resources JSONB |
 | `article_favorites` | Favoritos por usuario |
@@ -136,6 +139,7 @@ Flujo de registro:
 | `security_audit_log` | Auditoría de acciones sensibles |
 | `hiit_workouts` | Plantillas HIIT (modo, config JSONB, owner) |
 | `hiit_sessions` | Sesiones HIIT completadas (modo, rondas, duración) |
+| `role_requests` | Solicitudes de rol professor de usuarios staff (justificación, status, revisor) |
 
 ---
 
@@ -144,8 +148,8 @@ Flujo de registro:
 | Rol | Permisos |
 |---|---|
 | `student` | Catálogo, rutinas personales, sesiones, rankings, artículos, eventos |
-| `professor` | Todo lo anterior + crear ejercicios, rutinas públicas, artículos y eventos |
-| `staff` | Igual que student |
+| `professor` | Todo lo anterior + crear ejercicios, rutinas públicas, artículos y eventos. Se obtiene por solicitud aprobada por un admin |
+| `staff` | Funcionario — igual que student; puede solicitar el rol professor |
 | `admin` | Acceso total: usuarios, carreras, validación de récords y contenido |
 
 ---
@@ -197,6 +201,14 @@ Flujo de registro:
 | HIIT: ForTime con avance manual + restBetweenRounds | — | ✅ |
 | HIIT: guardar sesión automáticamente al completar | ✅ | ✅ |
 | HIIT: pre-cargar ejercicio desde catálogo con botón "Agregar a HIIT" | — | ✅ |
+| Roles: registro @ubiobio.cl como staff + solicitud de rol professor con aprobación admin | ✅ | ✅ |
+| Perfil: nivel de entrenamiento (principiante/intermedio/avanzado) | ✅ | ✅ |
+| Rutinas: peso objetivo editable por ejercicio en el wizard | ✅ | ✅ |
+| Recomendación de peso/duración al iniciar sesión (rutina → historial → PR → estimado por nivel) | ✅ | ✅ |
+| Sesión: objetivo esperado por serie + comparación esperado vs. real (✓/▼) | ✅ | ✅ |
+| Resumen de sesión: % de cumplimiento del plan | ✅ | ✅ |
+| Récords de calistenia (lastre) e isométrico (tiempo) en historial, home y perfil | ✅ | ✅ |
+| Inicio: pull-to-refresh para recargar datos | — | ✅ |
 
 ---
 
@@ -372,6 +384,7 @@ Todas las respuestas: `{ "data": ..., "error": null }` o `{ "data": null, "error
 | Eventos | GET list · my-interests · get/:id · POST create · PATCH update · deactivate · POST :id/interest |
 | Notificaciones | GET list · unreadCount · PATCH read/:id · readAll · POST create |
 | Lift submissions | POST / · GET / · /:id · POST /:id/approve · /:id/reject · GET rankings · records |
+| Solicitudes de rol | POST / · GET mine · GET ?status= · POST /:id/approve · /:id/reject |
 | **HIIT** | GET workouts · POST workouts · GET workouts/:id · PATCH workouts/:id · DELETE workouts/:id · POST sessions · GET sessions |
 
 ---
@@ -397,7 +410,7 @@ Con shell (NavigationBar 5 tabs):
   /events  /events/:id
   /notifications
   /profile
-  /admin/users  /admin/careers   (guard: admin)
+  /admin/users  /admin/careers  /admin/role-requests   (guard: admin)
 ```
 
 ---
