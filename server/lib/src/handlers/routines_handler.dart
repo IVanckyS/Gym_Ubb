@@ -45,6 +45,12 @@ Router get routinesHandler {
 
 const _validGoals = ['fuerza', 'hipertrofia', 'resistencia', 'perdida_de_peso'];
 
+num? _toNum(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v;
+  return num.tryParse(v.toString());
+}
+
 Map<String, dynamic> _routineToMap(Map<String, dynamic> row) {
   // day_names viene como List o como String PostgreSQL array "{Lunes,Miércoles,...}"
   final rawDays = row['day_names'];
@@ -94,6 +100,7 @@ Map<String, dynamic> _dayExerciseToMap(Map<String, dynamic> row) => {
       'restSeconds': row['rest_seconds'],
       'rir': row['rir'],
       'durationSeconds': row['duration_seconds'],
+      'targetWeightKg': _toNum(row['target_weight_kg']),
       'orderIndex': row['order_index'],
     };
 
@@ -192,7 +199,8 @@ Future<Response> _getRoutine(Request request, String id) async {
       'SELECT rde.id, rde.routine_day_id, rde.exercise_id, '
       'e.name AS exercise_name, e.muscle_group::text AS muscle_group, '
       'e.exercise_type, '
-      'rde.sets, rde.reps, rde.rest_seconds, rde.rir, rde.duration_seconds, rde.order_index '
+      'rde.sets, rde.reps, rde.rest_seconds, rde.rir, rde.duration_seconds, '
+      'rde.target_weight_kg, rde.order_index '
       'FROM routine_day_exercises rde '
       'JOIN exercises e ON e.id = rde.exercise_id '
       'WHERE rde.routine_day_id IN ($dayIds) '
@@ -291,14 +299,15 @@ Future<Response> _createRoutine(Request request) async {
       final restSeconds = ex['restSeconds'] as int? ?? 90;
       final rir = ex['rir'] as int?;
       final durationSeconds = ex['durationSeconds'] as int?;
+      final targetWeightKg = (ex['targetWeightKg'] as num?)?.toDouble();
       final exOrderIndex = ex['orderIndex'] as int? ?? 0;
 
       final rdeId = _uuid.v4();
       await db.execute(
         Sql.named(
-          'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, order_index) '
+          'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, target_weight_kg, order_index) '
           "VALUES ('$rdeId'::uuid, '$dayId'::uuid, '$exerciseId'::uuid, "
-          '@sets, @reps, @restSeconds, @rir, @durationSeconds, @orderIndex)',
+          '@sets, @reps, @restSeconds, @rir, @durationSeconds, @targetWeightKg, @orderIndex)',
         ),
         parameters: {
           'sets': sets,
@@ -306,6 +315,7 @@ Future<Response> _createRoutine(Request request) async {
           'restSeconds': restSeconds,
           'rir': rir,
           'durationSeconds': durationSeconds,
+          'targetWeightKg': targetWeightKg,
           'orderIndex': exOrderIndex,
         },
       );
@@ -414,14 +424,15 @@ Future<Response> _updateRoutine(Request request, String id) async {
         final restSeconds = ex['restSeconds'] as int? ?? 90;
         final rir = ex['rir'] as int?;
         final durationSeconds = ex['durationSeconds'] as int?;
+        final targetWeightKg = (ex['targetWeightKg'] as num?)?.toDouble();
         final rdeId = _uuid.v4();
         await db.execute(
           Sql.named(
-            'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, order_index) '
+            'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, target_weight_kg, order_index) '
             "VALUES ('$rdeId'::uuid, '$dayId'::uuid, '$exerciseId'::uuid, "
-            '@sets, @reps, @restSeconds, @rir, @durationSeconds, @orderIndex)',
+            '@sets, @reps, @restSeconds, @rir, @durationSeconds, @targetWeightKg, @order)',
           ),
-          parameters: {'sets': sets, 'reps': reps, 'restSeconds': restSeconds, 'rir': rir, 'durationSeconds': durationSeconds, 'orderIndex': j},
+          parameters: {'sets': sets, 'reps': reps, 'restSeconds': restSeconds, 'rir': rir, 'durationSeconds': durationSeconds, 'targetWeightKg': targetWeightKg, 'order': j},
         );
       }
     }
@@ -461,7 +472,8 @@ Future<Response> _myDefault(Request request) async {
       'SELECT rde.id, rde.routine_day_id, rde.exercise_id, '
       'e.name AS exercise_name, e.muscle_group::text AS muscle_group, '
       'e.exercise_type, '
-      'rde.sets, rde.reps, rde.rest_seconds, rde.rir, rde.duration_seconds, rde.order_index '
+      'rde.sets, rde.reps, rde.rest_seconds, rde.rir, rde.duration_seconds, '
+      'rde.target_weight_kg, rde.order_index '
       'FROM routine_day_exercises rde '
       'JOIN exercises e ON e.id = rde.exercise_id '
       'WHERE rde.routine_day_id IN ($dayIds) '
@@ -559,7 +571,7 @@ Future<Response> _copyRoutine(Request request, String id) async {
     );
 
     final exResult = await db.execute(
-      'SELECT exercise_id, sets, reps, rest_seconds, rir, duration_seconds, order_index '
+      'SELECT exercise_id, sets, reps, rest_seconds, rir, duration_seconds, target_weight_kg, order_index '
       "FROM routine_day_exercises WHERE routine_day_id = '${day['id']}'::uuid "
       'ORDER BY order_index ASC',
     );
@@ -568,9 +580,9 @@ Future<Response> _copyRoutine(Request request, String id) async {
       final newExId = _uuid.v4();
       await db.execute(
         Sql.named(
-          'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, order_index) '
+          'INSERT INTO routine_day_exercises (id, routine_day_id, exercise_id, sets, reps, rest_seconds, rir, duration_seconds, target_weight_kg, order_index) '
           "VALUES ('$newExId'::uuid, '$newDayId'::uuid, '${ex['exercise_id']}'::uuid, "
-          '@sets, @reps, @rest, @rir, @durationSeconds, @order)',
+          '@sets, @reps, @rest, @rir, @durationSeconds, @targetWeightKg, @order)',
         ),
         parameters: {
           'sets': ex['sets'],
@@ -578,6 +590,7 @@ Future<Response> _copyRoutine(Request request, String id) async {
           'rest': ex['rest_seconds'],
           'rir': ex['rir'],
           'durationSeconds': ex['duration_seconds'],
+          'targetWeightKg': _toNum(ex['target_weight_kg']),
           'order': ex['order_index'],
         },
       );
@@ -616,6 +629,7 @@ Future<Response> _addExerciseToDay(Request request) async {
   final restSeconds     = body['restSeconds']     as int?    ?? 90;
   final exerciseType    = (body['exerciseType']   as String? ?? 'dinamico').trim();
   final durationSeconds = body['durationSeconds'] as int?;
+  final targetWeightKg  = (body['targetWeightKg'] as num?)?.toDouble();
 
   // Calculate next order_index
   final orderResult = await db.execute(
@@ -628,15 +642,16 @@ Future<Response> _addExerciseToDay(Request request) async {
   await db.execute(
     Sql.named(
       'INSERT INTO routine_day_exercises '
-      '(id, routine_day_id, exercise_id, sets, reps, rest_seconds, duration_seconds, order_index) '
+      '(id, routine_day_id, exercise_id, sets, reps, rest_seconds, duration_seconds, target_weight_kg, order_index) '
       "VALUES ('$newId'::uuid, '$routineDayId'::uuid, '$exerciseId'::uuid, "
-      '@sets, @reps, @restSeconds, @durationSeconds, @orderIndex)',
+      '@sets, @reps, @restSeconds, @durationSeconds, @targetWeightKg, @orderIndex)',
     ),
     parameters: {
       'sets': sets,
       'reps': reps,
       'restSeconds': restSeconds,
       'durationSeconds': durationSeconds,
+      'targetWeightKg': targetWeightKg,
       'orderIndex': nextOrder,
     },
   );
