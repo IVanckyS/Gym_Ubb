@@ -862,10 +862,9 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                       loading: loading,
                       isIsometric: widget.isIsometric,
                       onToggle: () => widget.onToggleSet(exerciseId, setNumber, restSeconds),
-                      targetWeightDisplay: !widget.isIsometric && targetKg != null
-                          ? toDisplayUnit(targetKg, widget.unit)
-                          : null,
+                      targetWeightKg: widget.isIsometric ? null : targetKg,
                       targetReps: widget.isIsometric ? null : widget.targetReps[key],
+                      unit: widget.unit,
                     );
                   }),
                 ],
@@ -886,8 +885,9 @@ class _SetRow extends StatelessWidget {
     required this.loading,
     required this.onToggle,
     this.isIsometric = false,
-    this.targetWeightDisplay,
+    this.targetWeightKg,
     this.targetReps,
+    this.unit = WeightUnit.kg,
   });
 
   final int setNumber;
@@ -897,17 +897,24 @@ class _SetRow extends StatelessWidget {
   final bool loading;
   final VoidCallback onToggle;
   final bool isIsometric;
-  final double? targetWeightDisplay;
+  final double? targetWeightKg;
   final int? targetReps;
+  final WeightUnit unit;
 
   /// null = sin objetivo que comparar; true = cumplió o superó; false = por debajo.
+  ///
+  /// La comparación se hace en kg (no en la unidad mostrada): el campo de texto
+  /// contiene el valor en la unidad preferida del usuario, redondeado a 1
+  /// decimal al pre-llenarse, así que se reconvierte a kg antes de comparar
+  /// contra el objetivo (que ya está en kg, sin redondeos de conversión).
   bool? get _meetsTarget {
     if (!completed) return null;
-    if (targetWeightDisplay == null && targetReps == null) return null;
-    final w = double.tryParse(weightController.text.trim());
+    if (targetWeightKg == null && targetReps == null) return null;
+    final displayValue = double.tryParse(weightController.text.trim());
+    final w = displayValue != null ? fromDisplayUnit(displayValue, unit) : null;
     final r = int.tryParse(repsController.text.trim());
-    final weightOk = targetWeightDisplay == null ||
-        (w != null && w >= targetWeightDisplay! - 0.01);
+    final weightOk = targetWeightKg == null ||
+        (w != null && w >= targetWeightKg! - 0.05);
     final repsOk = targetReps == null || (r != null && r >= targetReps!);
     return weightOk && repsOk;
   }
@@ -915,7 +922,7 @@ class _SetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meets = _meetsTarget;
-    final statusColor = meets == false ? const Color(0xFFFFB347) : AppColors.accentGreen;
+    final statusColor = meets == false ? AppColors.diffIntermedio : AppColors.accentGreen;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
