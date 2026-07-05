@@ -40,16 +40,21 @@ class WorkoutSummaryScreen extends StatelessWidget {
       final sets = (ex['sets'] as List? ?? []).cast<Map<String, dynamic>>();
       setsWithTarget.addAll(sets.where((s) =>
           s['completed'] == true &&
-          (s['targetWeightKg'] != null || s['targetReps'] != null)));
+          (s['targetWeightKg'] != null ||
+              s['targetReps'] != null ||
+              s['targetDurationSeconds'] != null)));
     }
     final metTarget = setsWithTarget.where((s) {
       final targetW = (s['targetWeightKg'] as num?)?.toDouble();
       final targetR = s['targetReps'] as int?;
+      final targetD = s['targetDurationSeconds'] as int?;
       final actualW = (s['weightKg'] as num?)?.toDouble();
       final actualR = s['reps'] as int?;
+      final actualD = s['durationSeconds'] as int?;
       final weightOk = targetW == null || (actualW != null && actualW >= targetW - 0.01);
       final repsOk = targetR == null || (actualR != null && actualR >= targetR);
-      return weightOk && repsOk;
+      final durationOk = targetD == null || (actualD != null && actualD >= targetD);
+      return weightOk && repsOk && durationOk;
     }).length;
     final compliancePct = setsWithTarget.isNotEmpty
         ? ((metTarget / setsWithTarget.length) * 100).round()
@@ -271,6 +276,9 @@ class _ExerciseSummaryRow extends StatelessWidget {
     final planReps = completedSets
         .map((s) => s['targetReps'] as int?)
         .firstWhere((r) => r != null, orElse: () => null);
+    final planDuration = completedSets
+        .map((s) => s['targetDurationSeconds'] as int?)
+        .firstWhere((d) => d != null, orElse: () => null);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -291,11 +299,13 @@ class _ExerciseSummaryRow extends StatelessWidget {
               fontSize: 14,
             ),
           ),
-          if (targetSets != null && (planWeight != null || planReps != null)) ...[
+          if (targetSets != null && (planWeight != null || planReps != null || planDuration != null)) ...[
             SizedBox(height: 2),
             Text(
-              'Plan: $targetSets×${planReps ?? '-'}'
-              '${planWeight != null ? ' @ ${planWeight.toStringAsFixed(1)} kg' : ''}',
+              planDuration != null
+                  ? 'Plan: $targetSets×${planDuration}s'
+                  : 'Plan: $targetSets×${planReps ?? '-'}'
+                    '${planWeight != null ? ' @ ${planWeight.toStringAsFixed(1)} kg' : ''}',
               style: TextStyle(color: context.colorTextSecondary, fontSize: 12),
             ),
           ],
@@ -308,21 +318,27 @@ class _ExerciseSummaryRow extends StatelessWidget {
               final s = entry.value;
               final kg = s['weightKg'];
               final reps = s['reps'];
-              final label = [
-                if (kg != null) '${kg}kg',
-                if (reps != null) '× $reps',
-              ].join(' ');
+              final duration = s['durationSeconds'];
+              final label = duration != null
+                  ? '${duration}s'
+                  : [
+                      if (kg != null) '${kg}kg',
+                      if (reps != null) '× $reps',
+                    ].join(' ');
 
               final targetW = (s['targetWeightKg'] as num?)?.toDouble();
               final targetR = s['targetReps'] as int?;
+              final targetD = s['targetDurationSeconds'] as int?;
               String indicator = '';
               Color chipColor = context.colorBgTertiary;
-              if (targetW != null || targetR != null) {
+              if (targetW != null || targetR != null || targetD != null) {
                 final actualW = (s['weightKg'] as num?)?.toDouble();
                 final actualR = s['reps'] as int?;
+                final actualD = s['durationSeconds'] as int?;
                 final weightOk = targetW == null || (actualW != null && actualW >= targetW - 0.01);
                 final repsOk = targetR == null || (actualR != null && actualR >= targetR);
-                final met = weightOk && repsOk;
+                final durationOk = targetD == null || (actualD != null && actualD >= targetD);
+                final met = weightOk && repsOk && durationOk;
                 indicator = met ? ' ✓' : ' ▼';
                 chipColor = (met ? AppColors.accentGreen : const Color(0xFFFFB347)).withValues(alpha: 0.15);
               }

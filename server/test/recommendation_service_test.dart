@@ -148,4 +148,96 @@ void main() {
       expect(s.weightKg, greaterThan(0));
     });
   });
+
+  group('computeSuggestion — calistenia (isBodyweight)', () {
+    test('usa el lastre de la rutina si está definido', () {
+      final s = computeSuggestion(
+        exerciseName: 'Dominadas',
+        muscleGroup: 'espalda',
+        repsRange: '6-10',
+        routineTargetWeightKg: 10,
+        fitnessLevel: 'intermedio',
+        isBodyweight: true,
+      );
+      expect(s.source, 'rutina');
+      expect(s.weightKg, 10);
+    });
+
+    test('progresión doble sobre lastre igual que en dinámicos', () {
+      final s = computeSuggestion(
+        exerciseName: 'Fondos',
+        muscleGroup: 'pecho',
+        repsRange: '6-10',
+        lastSessionSets: const [
+          CompletedSet(completed: true, weightKg: 5, reps: 10),
+        ],
+        fitnessLevel: 'intermedio',
+        isBodyweight: true,
+      );
+      expect(s.source, 'historial');
+      expect(s.weightKg, greaterThan(5));
+    });
+
+    test('sin rutina/historial/PR: lastre por defecto es 0 (sin ratio de compuesto)', () {
+      final s = computeSuggestion(
+        exerciseName: 'Dominadas',
+        muscleGroup: 'espalda',
+        repsRange: '6-10',
+        userWeightKg: 80,
+        fitnessLevel: 'intermedio',
+        isBodyweight: true,
+      );
+      expect(s.source, 'estimado');
+      expect(s.weightKg, 0);
+    });
+  });
+
+  group('computeDurationSuggestion — cascada isométrica', () {
+    test('usa la duración de la rutina si está definida (source: rutina)', () {
+      final s = computeDurationSuggestion(
+        routineTargetDurationSeconds: 40,
+        fitnessLevel: 'intermedio',
+      );
+      expect(s.source, 'rutina');
+      expect(s.durationSeconds, 40);
+    });
+
+    test('progresión: suma 5s a la última duración si se completó el hold', () {
+      final s = computeDurationSuggestion(
+        lastSessionHolds: const [
+          CompletedHold(completed: true, durationSeconds: 30),
+          CompletedHold(completed: true, durationSeconds: 25),
+        ],
+        fitnessLevel: 'intermedio',
+      );
+      expect(s.source, 'historial');
+      expect(s.durationSeconds, 35);
+    });
+
+    test('ignora holds no completados en la progresión', () {
+      final s = computeDurationSuggestion(
+        lastSessionHolds: const [
+          CompletedHold(completed: false, durationSeconds: 60),
+          CompletedHold(completed: true, durationSeconds: 20),
+        ],
+        fitnessLevel: 'intermedio',
+      );
+      expect(s.durationSeconds, 25);
+    });
+
+    test('usa el PR de duración si no hay rutina ni historial', () {
+      final s = computeDurationSuggestion(
+        prDurationSeconds: 50,
+        fitnessLevel: 'avanzado',
+      );
+      expect(s.source, 'pr');
+      expect(s.durationSeconds, 50);
+    });
+
+    test('sin datos: usa el piso estimado por nivel', () {
+      expect(computeDurationSuggestion(fitnessLevel: 'principiante').durationSeconds, 20);
+      expect(computeDurationSuggestion(fitnessLevel: 'intermedio').durationSeconds, 30);
+      expect(computeDurationSuggestion(fitnessLevel: 'avanzado').durationSeconds, 45);
+    });
+  });
 }

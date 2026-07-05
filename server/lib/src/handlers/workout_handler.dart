@@ -462,8 +462,8 @@ Future<Response> _getSession(Request request, String id) async {
     }).toList();
   }
 
-  // Adjuntar sugerencia de peso a ejercicios dinámicos con rutina asociada.
-  // Isométricos y calistenia quedan fuera de alcance de esta iteración.
+  // Adjuntar sugerencia a los ejercicios con rutina asociada: peso para
+  // dinámicos y calistenia (lastre), duración para isométricos.
   if (routineDayId != null && exercises.isNotEmpty) {
     final userRow = await db.execute(
       "SELECT weight_kg, fitness_level::text AS fitness_level FROM users WHERE id = '$userId'::uuid",
@@ -476,7 +476,17 @@ Future<Response> _getSession(Request request, String id) async {
         : 'principiante';
 
     for (final ex in exercises) {
-      if (ex['exerciseType'] != 'dinamico') continue;
+      final exerciseType = ex['exerciseType'] as String? ?? 'dinamico';
+      if (exerciseType == 'isometrico') {
+        final suggestion = await suggestDurationFor(
+          userId: userId,
+          exerciseId: ex['exerciseId'] as String,
+          routineTargetDurationSeconds: ex['targetDurationSeconds'] as int?,
+          fitnessLevel: fitnessLevel,
+        );
+        ex['suggestion'] = suggestion.toMap();
+        continue;
+      }
       final suggestion = await suggestFor(
         userId: userId,
         exerciseId: ex['exerciseId'] as String,
@@ -487,6 +497,7 @@ Future<Response> _getSession(Request request, String id) async {
         routineTargetWeightKg: ex['targetWeightKg'] as double?,
         userWeightKg: userWeightKg,
         fitnessLevel: fitnessLevel,
+        isBodyweight: exerciseType == 'calistenia',
       );
       ex['suggestion'] = suggestion.toMap();
     }
@@ -739,9 +750,10 @@ Future<Response> _cancelSession(Request request, String sessionId) async {
   );
   if (check.isEmpty) return notFound('Sesión no encontrada o ya finalizada');
 
-  // Eliminar PRs fantasma (weight=0) generados en esta sesión y desvincular el resto
+  // Eliminar PRs fantasma (weight=0 Y reps=0 — nunca es un PR real de ningún tipo)
+  // generados en esta sesión y desvincular el resto.
   await db.execute(
-    "DELETE FROM personal_records WHERE session_id = '$sessionId'::uuid AND weight_kg = 0",
+    "DELETE FROM personal_records WHERE session_id = '$sessionId'::uuid AND weight_kg = 0 AND reps = 0",
   );
   await db.execute(
     "UPDATE personal_records SET session_id = NULL WHERE session_id = '$sessionId'::uuid",
@@ -760,38 +772,81 @@ Future<Response> _cancelSession(Request request, String sessionId) async {
 // ── Helpers privados ─────────────────────────────────────────────────────────
 
 /// Verifica si el set completado es un récord personal y lo guarda si aplica.
+/// Bifurca por tipo de ejercicio:
+/// - dinamico: dispara con weightKg > 0 && reps > 0, compara por weightKg.
+/// - calistenia: dispara con reps > 0 (weightKg=lastre puede ser 0/null), compara por weightKg.
+/// - isometrico: dispara con durationSeconds > 0, guarda weight_kg=0/reps=1 (sentinels), compara por duration_seconds.
 Future<void> _checkAndSavePR(
   String userId,
-  String exerciseId,
-  double weightKg,
-  int reps,
-  String sessionId,
-) async {
+  String exerciseId, {
+  double? weightKg,
+  int? reps,
+  int? durationSeconds,
+  required String sessionId,
+}) async {
   try {
+    final exRow = await db.execute(
+      "SELECT exercise_type FROM exercises WHERE id = '$exerciseId'::uuid",
+    );
+    if (exRow.isEmpty) return;
+    final exerciseType = exRow.first.toColumnMap()['exercise_type'] as String? ?? 'dinamico';
+
+    double prWeightKg;
+    int prReps;
+    int? prDurationSeconds;
+    bool compareByDuration;
+
+    if (exerciseType == 'isometrico') {
+      if (durationSeconds == null || durationSeconds <= 0) return;
+      prWeightKg = 0;
+      prReps = 1;
+      prDurationSeconds = durationSeconds;
+      compareByDuration = true;
+    } else if (exerciseType == 'calistenia') {
+      if (reps == null || reps <= 0) return;
+      prWeightKg = weightKg ?? 0;
+      prReps = reps;
+      compareByDuration = false;
+    } else {
+      if (weightKg == null || weightKg <= 0 || reps == null || reps <= 0) return;
+      prWeightKg = weightKg;
+      prReps = reps;
+      compareByDuration = false;
+    }
+
     final existing = await db.execute(
-      "SELECT id, weight_kg FROM personal_records "
-      "WHERE user_id = '$userId'::uuid AND exercise_id = '$exerciseId'::uuid AND reps = $reps",
+      "SELECT id, weight_kg, duration_seconds FROM personal_records "
+      "WHERE user_id = '$userId'::uuid AND exercise_id = '$exerciseId'::uuid AND reps = $prReps",
     );
 
     if (existing.isEmpty) {
       final prId = _uuid.v4();
+      final durationVal = prDurationSeconds != null ? '$prDurationSeconds' : 'NULL';
       await db.execute(
-        "INSERT INTO personal_records (id, user_id, exercise_id, weight_kg, reps, session_id) "
-        "VALUES ('$prId'::uuid, '$userId'::uuid, '$exerciseId'::uuid, $weightKg, $reps, '$sessionId'::uuid)",
+        "INSERT INTO personal_records (id, user_id, exercise_id, weight_kg, reps, duration_seconds, session_id) "
+        "VALUES ('$prId'::uuid, '$userId'::uuid, '$exerciseId'::uuid, $prWeightKg, $prReps, $durationVal, '$sessionId'::uuid)",
       );
+      return;
+    }
+
+    final row = existing.first.toColumnMap();
+    final prId = row['id'] as String;
+    var isBetter = false;
+    if (compareByDuration) {
+      final currentDuration = row['duration_seconds'] as int? ?? 0;
+      isBetter = prDurationSeconds! > currentDuration;
     } else {
-      final currentWeight = double.tryParse(
-            existing.first.toColumnMap()['weight_kg']?.toString() ?? '0',
-          ) ??
-          0;
-      if (weightKg > currentWeight) {
-        final prId = existing.first.toColumnMap()['id'] as String;
-        await db.execute(
-          "UPDATE personal_records SET weight_kg = $weightKg, "
-          "session_id = '$sessionId'::uuid, achieved_at = NOW(), is_validated = false "
-          "WHERE id = '$prId'::uuid",
-        );
-      }
+      final currentWeight = double.tryParse(row['weight_kg']?.toString() ?? '0') ?? 0;
+      isBetter = prWeightKg > currentWeight;
+    }
+
+    if (isBetter) {
+      final durationVal = prDurationSeconds != null ? '$prDurationSeconds' : 'NULL';
+      await db.execute(
+        "UPDATE personal_records SET weight_kg = $prWeightKg, duration_seconds = $durationVal, "
+        "session_id = '$sessionId'::uuid, achieved_at = NOW(), is_validated = false "
+        "WHERE id = '$prId'::uuid",
+      );
     }
   } catch (_) {
     // No bloquear el flujo si falla el PR
