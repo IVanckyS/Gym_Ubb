@@ -7,6 +7,15 @@ import '../utils/response.dart';
 
 final _uuid = Uuid();
 
+// status es un ENUM (lift_submission_status) — postgres ^3.x lo devuelve como
+// UndecodedBytes si no se castea ::text, así que no se puede usar ls.* aquí.
+const _submissionSelectCols =
+    'ls.id, ls.user_id, ls.exercise_id, ls.weight_kg, ls.reps, '
+    'ls.location_name, ls.location_lat, ls.location_lng, ls.description, '
+    'ls.was_witnessed, ls.witness_name, ls.video_url, '
+    "ls.status::text AS status, ls.reviewed_by, ls.review_comment, "
+    'ls.reviewed_at, ls.is_record_breaking, ls.created_at, ls.updated_at';
+
 Router get liftSubmissionsHandler {
   final router = Router();
 
@@ -87,7 +96,7 @@ Future<Response> _create(Request request) async {
 
   // Verificar que el ejercicio existe y es rankeable
   final exCheck = await db.execute(
-    "SELECT id, is_rankeable FROM exercises WHERE id = '$exerciseId'::uuid AND is_published = true",
+    "SELECT id, is_rankeable FROM exercises WHERE id = '$exerciseId'::uuid AND is_active = true",
   );
   if (exCheck.isEmpty) return notFound('Ejercicio no encontrado');
   final isRankeable = exCheck.first.toColumnMap()['is_rankeable'] as bool? ?? false;
@@ -153,7 +162,7 @@ Future<Response> _list(Request request) async {
   final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
   final result = await db.execute(
-    'SELECT ls.*, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
@@ -176,7 +185,7 @@ Future<Response> _getOne(Request request, String id) async {
 
 Future<Response> _fetchOne(String id) async {
   final result = await db.execute(
-    'SELECT ls.*, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
