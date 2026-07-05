@@ -18,7 +18,7 @@ services:
       POSTGRES_USER:     ${DB_USER:-gym_ubb_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword123}
     ports:
-      - "5432:5432"       # Acceso directo para DBeaver, psql, etc.
+      - "5433:5432"       # Acceso directo para DBeaver, psql, etc. (5433 en este worktree: 5432 lo usa el checkout principal)
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     ports:
-      - "16379:6379"      # Puerto mapeado (6379 reservado por Hyper-V en Windows)
+      - "16389:6379"      # Puerto mapeado (16379 lo usa el checkout principal en este worktree)
     volumes:
       - redis_dev_data:/data
     healthcheck:
@@ -55,8 +55,8 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8080:8080"       # API REST
-      - "8181:8181"       # Dart VM Observatory (debugging)
+      - "8090:8080"       # API REST (8080 lo usa el checkout principal en este worktree)
+      - "8191:8181"       # Dart VM Observatory (debugging)
     environment:
       RUNMODE: development
       PORT:    8080
