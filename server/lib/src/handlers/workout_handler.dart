@@ -74,6 +74,10 @@ Map<String, dynamic> _setToMap(Map<String, dynamic> row) => {
       'durationSeconds': row['duration_seconds'],
       'completed': row['completed'],
       'rpe': row['rpe'],
+      'targetWeightKg': row['target_weight_kg'] != null
+          ? double.tryParse(row['target_weight_kg'].toString())
+          : null,
+      'targetReps': row['target_reps'],
     };
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -175,6 +179,8 @@ Future<Response> _logSet(Request request) async {
   final durationSeconds = body['durationSeconds'] as int?;
   final completed = body['completed'] as bool? ?? false;
   final rpe = body['rpe'] as int?;
+  final targetWeightKg = (body['targetWeightKg'] as num?)?.toDouble();
+  final targetReps = body['targetReps'] as int?;
 
   if (sessionId.isEmpty) return badRequest('sessionId es requerido');
   if (exerciseId.isEmpty) return badRequest('exerciseId es requerido');
@@ -200,6 +206,8 @@ Future<Response> _logSet(Request request) async {
     if (durationSeconds != null) setClauses.add('duration_seconds = $durationSeconds');
     setClauses.add('completed = $completed');
     if (rpe != null) setClauses.add('rpe = $rpe');
+    if (targetWeightKg != null) setClauses.add('target_weight_kg = $targetWeightKg');
+    if (targetReps != null) setClauses.add('target_reps = $targetReps');
 
     if (setClauses.isNotEmpty) {
       await db.execute(
@@ -209,7 +217,8 @@ Future<Response> _logSet(Request request) async {
 
     final updated = await db.execute(
       "SELECT ws.id, ws.session_id, ws.exercise_id, e.name AS exercise_name, "
-      "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe "
+      "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe, "
+      "ws.target_weight_kg, ws.target_reps "
       "FROM workout_sets ws JOIN exercises e ON e.id = ws.exercise_id "
       "WHERE ws.id = '$setId'::uuid",
     );
@@ -222,16 +231,19 @@ Future<Response> _logSet(Request request) async {
   final repsVal = reps != null ? '$reps' : 'NULL';
   final durationVal = durationSeconds != null ? '$durationSeconds' : 'NULL';
   final rpeVal = rpe != null ? '$rpe' : 'NULL';
+  final targetWeightVal = targetWeightKg != null ? '$targetWeightKg' : 'NULL';
+  final targetRepsVal = targetReps != null ? '$targetReps' : 'NULL';
 
   await db.execute(
-    "INSERT INTO workout_sets (id, session_id, exercise_id, set_number, weight_kg, reps, duration_seconds, completed, rpe) "
+    "INSERT INTO workout_sets (id, session_id, exercise_id, set_number, weight_kg, reps, duration_seconds, completed, rpe, target_weight_kg, target_reps) "
     "VALUES ('$setId'::uuid, '$sessionId'::uuid, '$exerciseId'::uuid, $setNumber, "
-    "$weightVal, $repsVal, $durationVal, $completed, $rpeVal)",
+    "$weightVal, $repsVal, $durationVal, $completed, $rpeVal, $targetWeightVal, $targetRepsVal)",
   );
 
   final inserted = await db.execute(
     "SELECT ws.id, ws.session_id, ws.exercise_id, e.name AS exercise_name, "
-    "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe "
+    "ws.set_number, ws.weight_kg, ws.reps, ws.duration_seconds, ws.completed, ws.rpe, "
+    "ws.target_weight_kg, ws.target_reps "
     "FROM workout_sets ws JOIN exercises e ON e.id = ws.exercise_id "
     "WHERE ws.id = '$setId'::uuid",
   );
@@ -473,7 +485,8 @@ Future<Response> _getSession(Request request, String id) async {
   if (exercises.isNotEmpty) {
     final setsResult = await db.execute(
       'SELECT wset.id, wset.session_id, wset.exercise_id, e.name AS exercise_name, '
-      'wset.set_number, wset.weight_kg, wset.reps, wset.duration_seconds, wset.completed, wset.rpe '
+      'wset.set_number, wset.weight_kg, wset.reps, wset.duration_seconds, wset.completed, wset.rpe, '
+      'wset.target_weight_kg, wset.target_reps '
       'FROM workout_sets wset JOIN exercises e ON e.id = wset.exercise_id '
       "WHERE wset.session_id = '$id'::uuid "
       'ORDER BY wset.exercise_id, wset.set_number ASC',

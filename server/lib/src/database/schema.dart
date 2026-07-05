@@ -590,4 +590,8 @@ const List<String> _schemaStatements = [
 
   // ── Peso objetivo editable por el usuario en la rutina (opcional) ────────
   'ALTER TABLE routine_day_exercises ADD COLUMN IF NOT EXISTS target_weight_kg NUMERIC(6,2)',
+
+  // ── Objetivo planeado por serie, para comparar esperado vs. real ─────────
+  'ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS target_weight_kg NUMERIC(6,2)',
+  'ALTER TABLE workout_sets ADD COLUMN IF NOT EXISTS target_reps INTEGER',
 ];
