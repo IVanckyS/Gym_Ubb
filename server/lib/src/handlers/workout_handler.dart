@@ -3,6 +3,7 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:uuid/uuid.dart';
 import '../database/connection.dart';
 import '../middleware/auth_middleware.dart';
+import '../services/recommendation_service.dart';
 import '../utils/response.dart';
 
 final _uuid = Uuid();
@@ -382,9 +383,9 @@ Future<Response> _getSession(Request request, String id) async {
   if (routineDayId != null) {
     final exResult = await db.execute(
       'SELECT rde.exercise_id, e.name AS exercise_name, '
-      'e.muscle_group::text AS muscle_group, e.image_url, e.exercise_type, '
+      'e.muscle_group::text AS muscle_group, e.image_url, e.exercise_type, e.equipment, '
       'rde.sets AS target_sets, rde.reps AS target_reps, '
-      'rde.duration_seconds AS target_duration_seconds, '
+      'rde.duration_seconds AS target_duration_seconds, rde.target_weight_kg, '
       'rde.rest_seconds, rde.rir, rde.order_index '
       'FROM routine_day_exercises rde '
       'JOIN exercises e ON e.id = rde.exercise_id '
@@ -399,9 +400,13 @@ Future<Response> _getSession(Request request, String id) async {
         'muscleGroup': m['muscle_group'],
         'imageUrl': m['image_url'],
         'exerciseType': m['exercise_type'] ?? 'dinamico',
+        'equipment': m['equipment'],
         'targetSets': m['target_sets'],
         'targetReps': m['target_reps'],
         'targetDurationSeconds': m['target_duration_seconds'],
+        'targetWeightKg': m['target_weight_kg'] != null
+            ? double.tryParse(m['target_weight_kg'].toString())
+            : null,
         'restSeconds': m['rest_seconds'],
         'rir': m['rir'],
         'orderIndex': m['order_index'],
@@ -432,6 +437,36 @@ Future<Response> _getSession(Request request, String id) async {
         'sets': <Map<String, dynamic>>[],
       };
     }).toList();
+  }
+
+  // Adjuntar sugerencia de peso a ejercicios dinámicos con rutina asociada.
+  // Isométricos y calistenia quedan fuera de alcance de esta iteración.
+  if (routineDayId != null && exercises.isNotEmpty) {
+    final userRow = await db.execute(
+      "SELECT weight_kg, fitness_level::text AS fitness_level FROM users WHERE id = '$userId'::uuid",
+    );
+    final userWeightKg = userRow.isNotEmpty
+        ? double.tryParse(userRow.first.toColumnMap()['weight_kg']?.toString() ?? '')
+        : null;
+    final fitnessLevel = userRow.isNotEmpty
+        ? (userRow.first.toColumnMap()['fitness_level'] as String? ?? 'principiante')
+        : 'principiante';
+
+    for (final ex in exercises) {
+      if (ex['exerciseType'] != 'dinamico') continue;
+      final suggestion = await suggestFor(
+        userId: userId,
+        exerciseId: ex['exerciseId'] as String,
+        exerciseName: ex['exerciseName'] as String,
+        muscleGroup: ex['muscleGroup'] as String? ?? '',
+        equipment: ex['equipment'] as String?,
+        repsRange: ex['targetReps'] as String? ?? '8-12',
+        routineTargetWeightKg: ex['targetWeightKg'] as double?,
+        userWeightKg: userWeightKg,
+        fitnessLevel: fitnessLevel,
+      );
+      ex['suggestion'] = suggestion.toMap();
+    }
   }
 
   // Obtener todas las series de la sesión
