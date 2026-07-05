@@ -284,9 +284,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         children: highlights.map((rec) {
           final exerciseName = rec['exerciseName'] as String? ?? '';
+          final durationSeconds = rec['durationSeconds'] as int?;
           final rawKg = (rec['weightKg'] as num?)?.toDouble();
           final reps = (rec['reps'] as num?)?.toInt() ?? 0;
           final weight = rawKg != null ? _formatWeight(rawKg, unit) : '—';
+          final valueLabel = durationSeconds != null ? '${durationSeconds}s' : '$weight × $reps reps';
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
@@ -301,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 Text(
-                  '$weight × $reps reps',
+                  valueLabel,
                   style: const TextStyle(
                     color: AppColors.accentPrimary,
                     fontSize: 13,

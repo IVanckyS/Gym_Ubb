@@ -37,11 +37,13 @@ Router get rankingsHandler {
 Future<Response> _getRankingExercises(Request request) async {
   await requireAuth(request);
 
+  // El ranking compara peso levantado (o DOTS); no aplica a isométricos,
+  // donde el PR es una duración y no un peso comparable entre usuarios.
   final result = await db.execute(
     'SELECT DISTINCT e.id, e.name, e.muscle_group::text AS muscle_group '
     'FROM personal_records pr '
     'JOIN exercises e ON e.id = pr.exercise_id '
-    'WHERE pr.is_validated = true '
+    "WHERE pr.is_validated = true AND e.exercise_type != 'isometrico' "
     'ORDER BY e.name ASC',
   );
 
@@ -51,6 +53,7 @@ Future<Response> _getRankingExercises(Request request) async {
       'SELECT DISTINCT e.id, e.name, e.muscle_group::text AS muscle_group '
       'FROM personal_records pr '
       'JOIN exercises e ON e.id = pr.exercise_id '
+      "WHERE e.exercise_type != 'isometrico' "
       'ORDER BY e.name ASC',
     );
     final exercises = all.map((r) {

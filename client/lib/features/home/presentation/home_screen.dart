@@ -859,10 +859,13 @@ class _PersonalRecordsState extends State<_PersonalRecords> {
             itemBuilder: (context, i) {
               final rec = records[i];
               final name = rec['exerciseName'] as String? ?? '—';
+              final durationSeconds = rec['durationSeconds'] as int?;
               final rawKg = (rec['weightKg'] as num?)?.toDouble();
-              final weightStr = rawKg != null
-                  ? '${toDisplayUnit(rawKg, unit).toStringAsFixed(1)} $unitLabel'
-                  : '— $unitLabel';
+              final weightStr = durationSeconds != null
+                  ? '${durationSeconds}s'
+                  : (rawKg != null
+                      ? '${toDisplayUnit(rawKg, unit).toStringAsFixed(1)} $unitLabel'
+                      : '— $unitLabel');
               return _RecordCard(label: name, weight: weightStr);
             },
           ),
