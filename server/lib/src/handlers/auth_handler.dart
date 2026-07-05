@@ -132,6 +132,7 @@ Map<String, dynamic> _safeUser(Map<String, dynamic> row) {
     'weightKg': _parseNum(row['weight_kg']),
     'heightCm': _parseNum(row['height_cm']),
     'bodyFatPct': _parseNum(row['body_fat_pct']),
+    'fitnessLevel': row['fitness_level'],
     'units': row['units'],
     'notificationsEnabled': row['notifications_enabled'],
     'privateProfile': row['private_profile'],
@@ -297,7 +298,9 @@ Future<Response> _login(Request request) async {
   // Buscar usuario activo (role::text porque postgres no decodifica enums customizados)
   final rows = await db.execute(
     Sql.named(
-      'SELECT id, email, password_hash, name, career, role::text AS role, is_active '
+      'SELECT id, email, password_hash, name, career, faculty, role::text AS role, is_active, '
+      'weight_kg, height_cm, body_fat_pct, fitness_level::text AS fitness_level, units, '
+      'notifications_enabled, private_profile, member_since, last_login_at '
       'FROM users WHERE email = @email',
     ),
     parameters: {'email': email},
@@ -515,7 +518,7 @@ Future<Response> _refresh(Request request) async {
   final userRows = await db.execute(
     Sql.named(
       'SELECT id, email, name, career, faculty, role::text AS role, is_active, weight_kg, height_cm, '
-      'body_fat_pct, units, notifications_enabled, private_profile, member_since, last_login_at '
+      'body_fat_pct, fitness_level::text AS fitness_level, units, notifications_enabled, private_profile, member_since, last_login_at '
       'FROM users WHERE id = @userId AND is_active = true',
     ),
     parameters: {'userId': userId},
@@ -579,7 +582,7 @@ Future<Response> _me(Request request) async {
   final rows = await db.execute(
     Sql.named(
       'SELECT id, email, name, career, faculty, role::text AS role, weight_kg, height_cm, '
-      'body_fat_pct, units, notifications_enabled, private_profile, '
+      'body_fat_pct, fitness_level::text AS fitness_level, units, notifications_enabled, private_profile, '
       'member_since, last_login_at '
       'FROM users WHERE id = @userId AND is_active = true',
     ),

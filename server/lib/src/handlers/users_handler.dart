@@ -347,7 +347,7 @@ Future<Response> _patchMe(Request request) async {
 
   final body = await parseBody(request);
 
-  final allowed = ['name', 'career', 'faculty', 'weightKg', 'heightCm', 'bodyFatPct'];
+  final allowed = ['name', 'career', 'faculty', 'weightKg', 'heightCm', 'bodyFatPct', 'fitnessLevel'];
   final hasUpdate = allowed.any((k) => body.containsKey(k));
   if (!hasUpdate) return badRequest('No hay campos para actualizar');
 
@@ -418,6 +418,15 @@ Future<Response> _patchMe(Request request) async {
     }
   }
 
+  if (body.containsKey('fitnessLevel')) {
+    final level = (body['fitnessLevel'] as String? ?? '').trim();
+    const validLevels = ['principiante', 'intermedio', 'avanzado'];
+    if (!validLevels.contains(level)) {
+      return badRequest('Nivel inválido. Válidos: ${validLevels.join(', ')}');
+    }
+    setClauses.add("fitness_level = '$level'::difficulty_level");
+  }
+
   await db.execute(
     "UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() "
     "WHERE id = '$userId'::uuid",
@@ -426,7 +435,7 @@ Future<Response> _patchMe(Request request) async {
 
   final updated = await db.execute(
     'SELECT id, email, name, career, faculty, role::text AS role, '
-    'weight_kg, height_cm, body_fat_pct, units, '
+    'weight_kg, height_cm, body_fat_pct, fitness_level::text AS fitness_level, units, '
     'notifications_enabled, private_profile, '
     'is_active, member_since, last_login_at, created_at '
     "FROM users WHERE id = '$userId'::uuid",
@@ -441,6 +450,7 @@ Future<Response> _patchMe(Request request) async {
       'weightKg': _toNum(row['weight_kg']),
       'heightCm': _toNum(row['height_cm']),
       'bodyFatPct': _toNum(row['body_fat_pct']),
+      'fitnessLevel': row['fitness_level'],
       'units': row['units'],
       'notificationsEnabled': row['notifications_enabled'],
       'privateProfile': row['private_profile'],

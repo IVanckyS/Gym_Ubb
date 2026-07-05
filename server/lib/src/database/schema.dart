@@ -584,4 +584,7 @@ const List<String> _schemaStatements = [
   END
   \$\$
   ''',
+
+  // ── Nivel de entrenamiento del usuario (para sugerencia de pesos) ────────
+  "ALTER TABLE users ADD COLUMN IF NOT EXISTS fitness_level difficulty_level NOT NULL DEFAULT 'principiante'",
 ];
