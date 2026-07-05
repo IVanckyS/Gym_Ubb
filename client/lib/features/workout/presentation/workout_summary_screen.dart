@@ -34,6 +34,27 @@ class WorkoutSummaryScreen extends StatelessWidget {
       final sets = (ex['sets'] as List? ?? []).cast<Map<String, dynamic>>();
       return sum + sets.where((s) => s['completed'] == true).length;
     });
+
+    final setsWithTarget = <Map<String, dynamic>>[];
+    for (final ex in exercises) {
+      final sets = (ex['sets'] as List? ?? []).cast<Map<String, dynamic>>();
+      setsWithTarget.addAll(sets.where((s) =>
+          s['completed'] == true &&
+          (s['targetWeightKg'] != null || s['targetReps'] != null)));
+    }
+    final metTarget = setsWithTarget.where((s) {
+      final targetW = (s['targetWeightKg'] as num?)?.toDouble();
+      final targetR = s['targetReps'] as int?;
+      final actualW = (s['weightKg'] as num?)?.toDouble();
+      final actualR = s['reps'] as int?;
+      final weightOk = targetW == null || (actualW != null && actualW >= targetW - 0.01);
+      final repsOk = targetR == null || (actualR != null && actualR >= targetR);
+      return weightOk && repsOk;
+    }).length;
+    final compliancePct = setsWithTarget.isNotEmpty
+        ? ((metTarget / setsWithTarget.length) * 100).round()
+        : null;
+
     final routineName = session['routineName'] as String?;
     final dayLabel = session['dayLabel'] as String?;
 
@@ -115,6 +136,21 @@ class WorkoutSummaryScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              if (compliancePct != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _StatCard(
+                      icon: Icons.track_changes_rounded,
+                      label: 'Cumplimiento del plan',
+                      value: '$compliancePct%',
+                      color: compliancePct >= 100
+                          ? AppColors.accentGreen
+                          : const Color(0xFFFFB347),
+                    ),
+                  ],
+                ),
+              ],
 
               const SizedBox(height: 32),
 
@@ -228,6 +264,14 @@ class _ExerciseSummaryRow extends StatelessWidget {
 
     if (completedSets.isEmpty) return const SizedBox.shrink();
 
+    final targetSets = exercise['targetSets'] as int?;
+    final planWeight = completedSets
+        .map((s) => (s['targetWeightKg'] as num?)?.toDouble())
+        .firstWhere((w) => w != null, orElse: () => null);
+    final planReps = completedSets
+        .map((s) => s['targetReps'] as int?)
+        .firstWhere((r) => r != null, orElse: () => null);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -247,6 +291,14 @@ class _ExerciseSummaryRow extends StatelessWidget {
               fontSize: 14,
             ),
           ),
+          if (targetSets != null && (planWeight != null || planReps != null)) ...[
+            SizedBox(height: 2),
+            Text(
+              'Plan: $targetSets×${planReps ?? '-'}'
+              '${planWeight != null ? ' @ ${planWeight.toStringAsFixed(1)} kg' : ''}',
+              style: TextStyle(color: context.colorTextSecondary, fontSize: 12),
+            ),
+          ],
           SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -260,14 +312,29 @@ class _ExerciseSummaryRow extends StatelessWidget {
                 if (kg != null) '${kg}kg',
                 if (reps != null) '× $reps',
               ].join(' ');
+
+              final targetW = (s['targetWeightKg'] as num?)?.toDouble();
+              final targetR = s['targetReps'] as int?;
+              String indicator = '';
+              Color chipColor = context.colorBgTertiary;
+              if (targetW != null || targetR != null) {
+                final actualW = (s['weightKg'] as num?)?.toDouble();
+                final actualR = s['reps'] as int?;
+                final weightOk = targetW == null || (actualW != null && actualW >= targetW - 0.01);
+                final repsOk = targetR == null || (actualR != null && actualR >= targetR);
+                final met = weightOk && repsOk;
+                indicator = met ? ' ✓' : ' ▼';
+                chipColor = (met ? AppColors.accentGreen : const Color(0xFFFFB347)).withValues(alpha: 0.15);
+              }
+
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: context.colorBgTertiary,
+                  color: chipColor,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  'S$i: ${label.isEmpty ? '✓' : label}',
+                  'S$i: ${label.isEmpty ? '✓' : label}$indicator',
                   style: TextStyle(color: context.colorTextSecondary, fontSize: 12),
                 ),
               );
