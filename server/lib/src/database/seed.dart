@@ -112,19 +112,13 @@ Future<void> seedCareers(Connection conn) async {
   }
 }
 
-/// Limpia sesiones dev y siembra ejercicios solo si la tabla está vacía.
-/// Preserva exercises (con sus image_url de R2) entre reinicios del servidor.
+/// Siembra ejercicios solo si la tabla está vacía.
+/// Preserva exercises (con sus image_url de R2) y TODOS los datos de usuario
+/// (sesiones, sets, PRs, postulaciones, HIIT) entre reinicios del servidor —
+/// reiniciar el contenedor para recargar cambios de código no debe borrar
+/// datos de prueba.
 Future<void> seedDev(Connection conn) async {
   if (Platform.environment['RUNMODE'] == 'production') return;
-
-  print('[Seed] Limpiando datos de sesiones anteriores...');
-  await conn.execute('DELETE FROM hiit_sessions');
-  await conn.execute('DELETE FROM lift_submissions');
-  // personal_records y workout_sets referencian exercises (FK sin CASCADE) — borrar primero
-  await conn.execute('DELETE FROM personal_records');
-  await conn.execute('DELETE FROM workout_sets');
-  // routine_day_exercises NO se limpia: contiene la configuración de rutinas del usuario,
-  // no datos de sesión. Borrarla en cada reinicio eliminaría los ejercicios guardados.
 
   // Sembrar ejercicios solo si la tabla está vacía para preservar image_url subidas a R2
   final countResult = await conn.execute('SELECT COUNT(*) FROM exercises');
