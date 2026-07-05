@@ -337,9 +337,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _DataRow(label: 'Carrera', value: (user['career'] as String?)?.isNotEmpty == true ? user['career'] as String : '—'),
           _DataRow(label: 'Peso', value: _displayWeight(user['weightKg'])),
           _DataRow(label: 'Altura', value: user['heightCm'] != null ? '${user['heightCm']} cm' : '—'),
+          _DataRow(label: 'Nivel', value: _levelLabel(user['fitnessLevel'] as String?)),
         ],
       ),
     );
+  }
+
+  String _levelLabel(String? level) {
+    switch (level) {
+      case 'intermedio':
+        return 'Intermedio';
+      case 'avanzado':
+        return 'Avanzado';
+      default:
+        return 'Principiante';
+    }
   }
 
   // ── Solicitud de rol de profesor ─────────────────────────────────────────
@@ -694,6 +706,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _weightCtrl;
   late final TextEditingController _heightCtrl;
   String? _selectedCareer;
+  String _selectedLevel = 'principiante';
   bool _saving = false;
   String? _error;
 
@@ -709,6 +722,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     _heightCtrl = TextEditingController(
       text: widget.user['heightCm'] != null ? widget.user['heightCm'].toString() : '',
     );
+    _selectedLevel = (widget.user['fitnessLevel'] as String?) ?? 'principiante';
   }
 
   @override
@@ -731,6 +745,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       final body = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
         'career': (_selectedCareer != null && _selectedCareer!.isNotEmpty) ? _selectedCareer : null,
+        'fitnessLevel': _selectedLevel,
       };
       if (_weightCtrl.text.trim().isNotEmpty) {
         body['weightKg'] = double.tryParse(_weightCtrl.text.trim());
@@ -844,6 +859,18 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Text('Nivel de entrenamiento', style: TextStyle(color: context.colorTextMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _levelChip('principiante', 'Principiante', const Color(0xFF4ECDC4)),
+                _levelChip('intermedio', 'Intermedio', const Color(0xFFFFB347)),
+                _levelChip('avanzado', 'Avanzado', const Color(0xFFFF6B6B)),
+              ],
+            ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -864,6 +891,22 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _levelChip(String value, String label, Color color) {
+    final selected = _selectedLevel == value;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedLevel = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.2) : context.colorBgTertiary,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? color : context.colorBorder, width: selected ? 1.5 : 1),
+        ),
+        child: Text(label, style: TextStyle(color: selected ? color : context.colorTextSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
       ),
     );
   }
