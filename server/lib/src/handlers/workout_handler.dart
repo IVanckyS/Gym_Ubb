@@ -340,7 +340,8 @@ Future<Response> _getHistory(Request request) async {
   final result = await db.execute(
     'SELECT ws.id, ws.user_id, ws.routine_id, ws.routine_day_id, '
     'r.name AS routine_name, rd.label AS day_label, '
-    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes '
+    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes, '
+    'ws.status::text AS status, ws.early_finish_reason '
     'FROM workout_sessions ws '
     'LEFT JOIN routines r ON r.id = ws.routine_id '
     'LEFT JOIN routine_days rd ON rd.id = ws.routine_day_id '
@@ -389,7 +390,8 @@ Future<Response> _getSession(Request request, String id) async {
   final sessionResult = await db.execute(
     'SELECT ws.id, ws.user_id, ws.routine_id, ws.routine_day_id, '
     'r.name AS routine_name, rd.label AS day_label, '
-    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes '
+    'ws.started_at, ws.ended_at, ws.duration_minutes, ws.total_volume_kg, ws.notes, '
+    'ws.status::text AS status, ws.early_finish_reason '
     'FROM workout_sessions ws '
     'LEFT JOIN routines r ON r.id = ws.routine_id '
     'LEFT JOIN routine_days rd ON rd.id = ws.routine_day_id '
