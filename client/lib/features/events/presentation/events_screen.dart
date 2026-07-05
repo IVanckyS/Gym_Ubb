@@ -54,11 +54,25 @@ class _EventsScreenState extends State<EventsScreen>
   late final TabController _tabs;
   final _service = EventsService();
   final _upcomingKey = GlobalKey<_UpcomingTabState>();
+  final _interestsKey = GlobalKey<_InterestsTabState>();
+  int _lastTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
+    // TabBarView mantiene ambas pestañas montadas sin recargarlas al cambiar
+    // de tab, así que un interés marcado/quitado en una no se reflejaba en
+    // la otra hasta reconstruir toda la pantalla. Se refresca al aterrizar.
+    _tabs.addListener(() {
+      if (_tabs.index == _lastTabIndex) return;
+      _lastTabIndex = _tabs.index;
+      if (_tabs.index == 0) {
+        _upcomingKey.currentState?._load();
+      } else {
+        _interestsKey.currentState?._load();
+      }
+    });
   }
 
   @override
@@ -112,7 +126,7 @@ class _EventsScreenState extends State<EventsScreen>
               controller: _tabs,
               children: [
                 _UpcomingTab(key: _upcomingKey, service: _service),
-                _InterestsTab(service: _service),
+                _InterestsTab(key: _interestsKey, service: _service),
               ],
             ),
           ),
@@ -205,7 +219,7 @@ class _UpcomingTabState extends State<_UpcomingTab>
 
 class _InterestsTab extends StatefulWidget {
   final EventsService service;
-  const _InterestsTab({required this.service});
+  const _InterestsTab({super.key, required this.service});
 
   @override
   State<_InterestsTab> createState() => _InterestsTabState();

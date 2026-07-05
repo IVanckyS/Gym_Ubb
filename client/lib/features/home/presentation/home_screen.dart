@@ -29,12 +29,21 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentStreak = 0;
   bool _statsLoaded = false;
   int _unreadCount = 0;
+  int _refreshGen = 0;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
     _loadUnread();
+  }
+
+  /// Refresca stats/notificaciones propias y fuerza el remount (nueva Key) de
+  /// las secciones con estado propio (sesión de hoy, marcas, próximo evento)
+  /// para que también recarguen sus datos.
+  Future<void> _onRefresh() async {
+    setState(() => _refreshGen++);
+    await Future.wait([_loadStats(), _loadUnread()]);
   }
 
   Future<void> _loadStats() async {
@@ -80,37 +89,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: context.colorBgPrimary,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: _Header(
-              firstName: firstName,
-              dayName: dayName,
-              dateStr: dateStr,
-              monthWorkouts: _statsLoaded ? _monthWorkouts.toString() : '—',
-              currentStreak: _statsLoaded ? _currentStreak.toString() : '—',
-              unreadCount: _unreadCount,
+      body: RefreshIndicator(
+        color: AppColors.accentPrimary,
+        backgroundColor: context.colorBgSecondary,
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _Header(
+                firstName: firstName,
+                dayName: dayName,
+                dateStr: dateStr,
+                monthWorkouts: _statsLoaded ? _monthWorkouts.toString() : '—',
+                currentStreak: _statsLoaded ? _currentStreak.toString() : '—',
+                unreadCount: _unreadCount,
+              ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                FadeSlide(delay: const Duration(milliseconds: 80), child: _QuickActions(isAdmin: isAdmin, isProfessor: isProfessor)),
-                const SizedBox(height: 28),
-                FadeSlide(delay: const Duration(milliseconds: 160), child: _TodaySession()),
-                const SizedBox(height: 28),
-                FadeSlide(delay: const Duration(milliseconds: 240), child: const _PersonalRecords()),
-                const SizedBox(height: 28),
-                FadeSlide(delay: const Duration(milliseconds: 320), child: _NextEvent()),
-                const SizedBox(height: 28),
-                FadeSlide(delay: const Duration(milliseconds: 400), child: _DiscoverMore(isAdmin: isAdmin)),
-                const SizedBox(height: 28),
-                FadeSlide(delay: const Duration(milliseconds: 480), child: _LogoutTile(onLogout: () => auth.logout())),
-              ]),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  FadeSlide(delay: const Duration(milliseconds: 80), child: _QuickActions(isAdmin: isAdmin, isProfessor: isProfessor)),
+                  const SizedBox(height: 28),
+                  FadeSlide(delay: const Duration(milliseconds: 160), child: _TodaySession(key: ValueKey('today-$_refreshGen'))),
+                  const SizedBox(height: 28),
+                  FadeSlide(delay: const Duration(milliseconds: 240), child: _PersonalRecords(key: ValueKey('records-$_refreshGen'))),
+                  const SizedBox(height: 28),
+                  FadeSlide(delay: const Duration(milliseconds: 320), child: _NextEvent(key: ValueKey('event-$_refreshGen'))),
+                  const SizedBox(height: 28),
+                  FadeSlide(delay: const Duration(milliseconds: 400), child: _DiscoverMore(isAdmin: isAdmin)),
+                  const SizedBox(height: 28),
+                  FadeSlide(delay: const Duration(milliseconds: 480), child: _LogoutTile(onLogout: () => auth.logout())),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -478,7 +493,7 @@ class _QuickActionTile extends StatelessWidget {
 // ── Sesión de hoy ─────────────────────────────────────────────────────────────
 
 class _TodaySession extends StatefulWidget {
-  const _TodaySession();
+  const _TodaySession({super.key});
 
   @override
   State<_TodaySession> createState() => _TodaySessionState();
@@ -732,7 +747,7 @@ class _RoutineDayCard extends StatelessWidget {
 // ── Marcas personales ─────────────────────────────────────────────────────────
 
 class _PersonalRecords extends StatefulWidget {
-  const _PersonalRecords();
+  const _PersonalRecords({super.key});
 
   @override
   State<_PersonalRecords> createState() => _PersonalRecordsState();
@@ -901,7 +916,7 @@ class _RecordCard extends StatelessWidget {
 // ── Próximo evento ─────────────────────────────────────────────────────────────
 
 class _NextEvent extends StatefulWidget {
-  const _NextEvent();
+  const _NextEvent({super.key});
 
   @override
   State<_NextEvent> createState() => _NextEventState();

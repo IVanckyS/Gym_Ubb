@@ -58,11 +58,25 @@ class _EducationScreenState extends State<EducationScreen>
   late final TabController _tabs;
   final _service = ArticlesService();
   final _articlesKey = GlobalKey<_ArticlesTabState>();
+  final _favoritesKey = GlobalKey<_FavoritesTabState>();
+  int _lastTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
+    // TabBarView mantiene ambas pestañas montadas sin recargarlas al cambiar
+    // de tab, así que un favorito marcado/quitado en una no se reflejaba en
+    // la otra hasta reconstruir toda la pantalla. Se refresca al aterrizar.
+    _tabs.addListener(() {
+      if (_tabs.index == _lastTabIndex) return;
+      _lastTabIndex = _tabs.index;
+      if (_tabs.index == 0) {
+        _articlesKey.currentState?._load();
+      } else {
+        _favoritesKey.currentState?._load();
+      }
+    });
   }
 
   @override
@@ -116,7 +130,7 @@ class _EducationScreenState extends State<EducationScreen>
               controller: _tabs,
               children: [
                 _ArticlesTab(key: _articlesKey, service: _service),
-                _FavoritesTab(service: _service),
+                _FavoritesTab(key: _favoritesKey, service: _service),
               ],
             ),
           ),
@@ -312,7 +326,7 @@ class _ArticlesTabState extends State<_ArticlesTab>
 
 class _FavoritesTab extends StatefulWidget {
   final ArticlesService service;
-  const _FavoritesTab({required this.service});
+  const _FavoritesTab({super.key, required this.service});
 
   @override
   State<_FavoritesTab> createState() => _FavoritesTabState();
