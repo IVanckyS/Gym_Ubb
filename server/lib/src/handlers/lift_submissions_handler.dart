@@ -44,6 +44,7 @@ Map<String, dynamic> _submissionToMap(Map<String, dynamic> r) => {
       'id': r['id'],
       'userId': r['user_id'],
       'userName': r['user_name'],
+      'career': r['career'],
       'exerciseId': r['exercise_id'],
       'exerciseName': r['exercise_name'],
       'weightKg': r['weight_kg'] != null
@@ -162,7 +163,7 @@ Future<Response> _list(Request request) async {
   final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
   final result = await db.execute(
-    'SELECT $_submissionSelectCols, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, u.career AS career, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
@@ -185,7 +186,7 @@ Future<Response> _getOne(Request request, String id) async {
 
 Future<Response> _fetchOne(String id) async {
   final result = await db.execute(
-    'SELECT $_submissionSelectCols, u.name AS user_name, e.name AS exercise_name, '
+    'SELECT $_submissionSelectCols, u.name AS user_name, u.career AS career, e.name AS exercise_name, '
     'rv.name AS reviewer_name '
     'FROM lift_submissions ls '
     'JOIN users u ON u.id = ls.user_id '
@@ -322,9 +323,9 @@ Future<Response> _rankings(Request request) async {
   final whereEx = exerciseId != null ? "AND ls.exercise_id = '$exerciseId'::uuid" : '';
 
   final result = await db.execute(
-    'SELECT ls.id, ls.user_id, u.name AS user_name, ls.exercise_id, '
+    'SELECT ls.id, ls.user_id, u.name AS user_name, u.career AS career, ls.exercise_id, '
     'e.name AS exercise_name, ls.weight_kg, ls.reps, '
-    'ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, '
+    "ls.status::text AS status, ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, "
     'ls.description, ls.was_witnessed, ls.witness_name, '
     'NULL::text AS reviewer_name '
     'FROM lift_submissions ls '
@@ -346,9 +347,9 @@ Future<Response> _records(Request request) async {
 
   final result = await db.execute(
     'SELECT DISTINCT ON (ls.exercise_id, ls.reps) '
-    'ls.id, ls.user_id, u.name AS user_name, ls.exercise_id, '
+    'ls.id, ls.user_id, u.name AS user_name, u.career AS career, ls.exercise_id, '
     'e.name AS exercise_name, ls.weight_kg, ls.reps, '
-    'ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, '
+    "ls.status::text AS status, ls.location_name, ls.video_url, ls.is_record_breaking, ls.reviewed_at, "
     'ls.description, ls.was_witnessed, ls.witness_name, '
     'NULL::text AS reviewer_name '
     'FROM lift_submissions ls '

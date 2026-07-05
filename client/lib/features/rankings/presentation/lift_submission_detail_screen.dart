@@ -172,6 +172,11 @@ class _LiftSubmissionDetailScreenState
               icon: Icons.person_outline_rounded,
               label: 'Atleta',
               value: s['userName'] as String? ?? ''),
+          if ((s['career'] as String? ?? '').isNotEmpty)
+            _InfoRow(
+                icon: Icons.school_outlined,
+                label: 'Carrera',
+                value: s['career'] as String),
           _InfoRow(
               icon: Icons.monitor_weight_outlined,
               label: 'Peso',
