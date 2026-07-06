@@ -1,0 +1,3 @@
+# Los scripts SQL de inicializacion de la BD deben mantener saltos LF
+# para que PostgreSQL los cargue correctamente en cualquier plataforma.
+*.sql text eol=lf
