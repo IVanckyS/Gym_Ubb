@@ -24,28 +24,34 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB:       ${DB_NAME:-gym_ubb_dev}
-      POSTGRES_USER:     ${DB_USER:-gym_ubb_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword123}
+      # Requeridos desde .env (sin defaults): si faltan, compose falla al arrancar.
+      POSTGRES_DB:       ${DB_NAME:?Falta DB_NAME en .env}
+      POSTGRES_USER:     ${DB_USER:?Falta DB_USER en .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
     volumes:
       - gymubb_pgdata:/var/lib/postgresql/data
       # Los .sql aquí se ejecutan SOLO la primera vez (volumen vacío) → siembra inicial
       - ./server/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gym_ubb_user} -d ${DB_NAME:-gym_ubb_dev}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 15
     restart: unless-stopped
 
   # ── 2. Caché / blacklist JWT / rate limiting ───────────────────────────────
+  #    Autenticación opcional: si REDIS_PASSWORD está en .env, redis la exige;
+  #    si está vacío, arranca sin contraseña (redis no expone puerto al host).
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: >
+      sh -c 'exec redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}'
     volumes:
       - gymubb_redis:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
