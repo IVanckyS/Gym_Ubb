@@ -18,6 +18,11 @@
 # Para producción tras Nginx + HTTPS:  docker compose -f docker-compose.prod.yml up -d
 # =============================================================
 
+# Nombre de proyecto fijo: evita que compose herede el nombre de la carpeta y
+# reutilice imágenes/volúmenes de otro stack (p. ej. la imagen de desarrollo)
+# cuando el repo se clona en una máquina que ya tuvo el proyecto.
+name: gymubb_deploy
+
 services:
 
   # ── 1. Base de datos (carga automática de datos en el primer arranque) ─────
@@ -59,6 +64,8 @@ services:
 
   # ── 3. Servidor API Dart/Shelf (binario compilado, self-contained) ─────────
   server:
+    # Tag explícito: nunca colisiona con la imagen de dev (gym_ubb-server)
+    image: gymubb_deploy-server
     build:
       context: ./server
       dockerfile: Dockerfile
