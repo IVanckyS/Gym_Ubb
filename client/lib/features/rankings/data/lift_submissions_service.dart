@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/api_client.dart';
 
 class LiftSubmissionsService {
@@ -10,7 +11,7 @@ class LiftSubmissionsService {
       return (body['data'] ?? body) as Map<String, dynamic>;
     }
     final error = body['error'] as Map<String, dynamic>?;
-    throw Exception(error?['message'] as String? ?? 'Error desconocido');
+    throw ApiException(error?['message'] as String? ?? 'Error desconocido');
   }
 
   /// Crea una nueva postulación al ranking.

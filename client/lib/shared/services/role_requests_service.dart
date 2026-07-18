@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/error_messages.dart';
 import 'auth_service.dart';
 
 class RoleRequestsService {
@@ -78,7 +79,8 @@ class RoleRequestsService {
   }
 }
 
-class RoleRequestsException implements Exception {
+class RoleRequestsException implements AppException {
+  @override
   final String message;
   const RoleRequestsException(this.message);
   @override

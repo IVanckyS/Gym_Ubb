@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/articles_service.dart';
@@ -206,7 +207,7 @@ class _ArticlesTabState extends State<_ArticlesTab>
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -353,7 +354,7 @@ class _FavoritesTabState extends State<_FavoritesTab>
       final data = await widget.service.getFavorites();
       if (mounted) setState(() { _favorites = data; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -659,7 +660,7 @@ class _ArticleFormSheetState extends State<_ArticleFormSheet> {
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() { _error = e.toString(); _saving = false; });
+      setState(() { _error = humanizeError(e); _saving = false; });
     }
   }
 

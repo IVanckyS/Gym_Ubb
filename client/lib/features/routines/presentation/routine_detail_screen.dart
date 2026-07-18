@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/workout_service.dart';
 import '../data/routines_service.dart';
 
@@ -55,7 +56,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
         _loading = false;
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 

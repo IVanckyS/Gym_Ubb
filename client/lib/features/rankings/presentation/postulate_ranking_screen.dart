@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/services/exercises_service.dart';
@@ -115,7 +116,7 @@ class _PostulateRankingScreenState extends State<PostulateRankingScreen> {
       );
       context.pop();
     } catch (e) {
-      if (mounted) _showError(e.toString());
+      if (mounted) _showError(humanizeError(e));
       setState(() => _submitting = false);
     }
   }

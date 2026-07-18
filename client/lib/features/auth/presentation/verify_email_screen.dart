@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/auth_service.dart';
 
@@ -160,17 +161,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         });
         _startCooldown();
       }
-    } on AuthException catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _resendError = e.message;
-          _resending = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _resendError = 'No se pudo reenviar el código.';
+          _resendError = humanizeError(e);
           _resending = false;
         });
       }

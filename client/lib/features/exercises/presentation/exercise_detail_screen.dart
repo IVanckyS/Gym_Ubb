@@ -10,6 +10,7 @@ import '../../hiit/data/hiit_service.dart';
 import '../../routines/data/routines_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/exercises_service.dart';
 import '../../../shared/widgets/youtube_video_card.dart';
@@ -69,7 +70,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = humanizeError(e);
         _loading = false;
       });
     }
@@ -875,7 +876,7 @@ class _EditExerciseDialogState extends State<_EditExerciseDialog> {
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() { _saving = false; _saveStep = null; _error = e.toString(); });
+      setState(() { _saving = false; _saveStep = null; _error = humanizeError(e); });
     }
   }
 
@@ -1569,7 +1570,7 @@ class _AddToRoutineSheetState extends State<_AddToRoutineSheet> {
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text(humanizeError(e))),
       );
     }
   }

@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/youtube_video_card.dart';
 import '../data/lift_submissions_service.dart';
 
@@ -57,9 +58,7 @@ class _LiftSubmissionDetailScreenState
     } catch (e) {
       setState(() => _acting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.accentSecondary));
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -120,9 +119,7 @@ class _LiftSubmissionDetailScreenState
     } catch (e) {
       setState(() => _acting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.accentSecondary));
+        showErrorSnackBar(context, e);
       }
     }
   }

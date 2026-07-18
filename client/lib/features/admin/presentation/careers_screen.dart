@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/careers_service.dart';
+import '../../../shared/widgets/error_view.dart';
 
 class CareersScreen extends StatefulWidget {
   const CareersScreen({super.key});
@@ -204,9 +206,7 @@ class _CareersScreenState extends State<CareersScreen> {
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -260,7 +260,7 @@ class _CareersScreenState extends State<CareersScreen> {
                   }
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } catch (e) {
-                  setDialogState(() => error = e.toString());
+                  setDialogState(() => error = humanizeError(e));
                 }
               },
               child: Text(career == null ? 'Crear' : 'Guardar'),

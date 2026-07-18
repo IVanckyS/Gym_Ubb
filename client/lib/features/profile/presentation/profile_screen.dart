@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../shared/services/role_requests_service.dart';
@@ -742,7 +743,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     try {
       final authService = AuthService();
       final token = await authService.getAccessToken();
-      if (token == null) throw Exception('No autenticado');
+      if (token == null) throw ApiException('No autenticado');
 
       final body = <String, dynamic>{
         'name': _nameCtrl.text.trim(),
@@ -767,11 +768,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
       if (res.statusCode != 200) {
         final msg = jsonDecode(res.body)['error']?['message'] as String?;
-        throw Exception(msg ?? 'Error al guardar');
+        throw ApiException(msg ?? 'Error al guardar');
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() { _saving = false; _error = e.toString(); });
+      setState(() { _saving = false; _error = humanizeError(e); });
     }
   }
 

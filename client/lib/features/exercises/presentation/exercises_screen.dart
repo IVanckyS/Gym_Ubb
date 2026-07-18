@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/exercises_service.dart';
@@ -74,7 +75,7 @@ class _ExercisesScreenState extends State<ExercisesScreen>
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = humanizeError(e);
         _loading = false;
       });
     }
@@ -669,7 +670,7 @@ class _CreateExerciseDialogState extends State<_CreateExerciseDialog> {
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() { _saving = false; _saveStep = null; _error = e.toString(); });
+      setState(() { _saving = false; _saveStep = null; _error = humanizeError(e); });
     }
   }
 

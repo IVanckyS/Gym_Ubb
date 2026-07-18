@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/default_routine_provider.dart';
+import '../../../shared/widgets/error_view.dart';
 import '../data/routines_service.dart';
 
 class RoutinesScreen extends StatefulWidget {
@@ -47,7 +49,7 @@ class _RoutinesScreenState extends State<RoutinesScreen>
         _loading = false;
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -57,9 +59,7 @@ class _RoutinesScreenState extends State<RoutinesScreen>
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -80,9 +80,7 @@ class _RoutinesScreenState extends State<RoutinesScreen>
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -102,9 +100,7 @@ class _RoutinesScreenState extends State<RoutinesScreen>
       _tabs.animateTo(0);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }

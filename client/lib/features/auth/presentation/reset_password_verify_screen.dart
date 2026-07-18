@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/auth_service.dart';
 
 class ResetPasswordVerifyScreen extends StatefulWidget {
@@ -138,14 +139,14 @@ class _ResetPasswordVerifyScreenState
       _showSuccessAndGoLogin();
     } on AuthException catch (e) {
       if (mounted) {
-        setState(() => _error = e.message);
+        setState(() => _error = humanizeError(e));
         if (e.code == 'INVALID_CODE' || e.code == 'TOO_MANY_ATTEMPTS') {
           for (final c in _pinControllers) { c.clear(); }
           _pinFocusNodes[0].requestFocus();
         }
       }
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Error de conexión. Intenta de nuevo.');
+    } catch (e) {
+      if (mounted) setState(() => _error = humanizeError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -189,17 +190,10 @@ class _ResetPasswordVerifyScreenState
         });
         _startCooldown();
       }
-    } on AuthException catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _resendError = e.message;
-          _resending = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _resendError = 'No se pudo reenviar el código.';
+          _resendError = humanizeError(e);
           _resending = false;
         });
       }

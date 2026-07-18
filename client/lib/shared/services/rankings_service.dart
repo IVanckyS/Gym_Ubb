@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/error_messages.dart';
 import 'auth_service.dart';
 
-class RankingsException implements Exception {
+class RankingsException implements AppException {
+  @override
   final String message;
   RankingsException(this.message);
   @override

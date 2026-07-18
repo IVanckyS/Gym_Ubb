@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
@@ -131,7 +132,7 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
         }
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _loadingEx = false; });
+      setState(() { _error = humanizeError(e); _loadingEx = false; });
     }
   }
 
@@ -1064,7 +1065,7 @@ class _ValidationTabState extends State<_ValidationTab> {
       final list = await _service.getPending();
       setState(() { _pending = list; _loading = false; });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/workout_service.dart';
 
 class WorkoutHistoryScreen extends StatefulWidget {
@@ -42,7 +43,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = humanizeError(e);
         _loading = false;
         _loadingMore = false;
       });

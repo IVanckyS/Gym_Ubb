@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/error_messages.dart';
 import 'auth_service.dart';
 
 class NotificationsService {
@@ -20,7 +21,7 @@ class NotificationsService {
       return (body['data'] ?? body) as Map<String, dynamic>;
     }
     final err = body['error'] as Map<String, dynamic>?;
-    throw Exception(err?['message'] ?? 'Error desconocido');
+    throw ApiException((err?['message'] as String?) ?? 'Error desconocido');
   }
 
   Future<Map<String, dynamic>> list() async {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/auth_service.dart';
 import 'hiit_models.dart';
 
@@ -21,7 +22,7 @@ class HiitService {
       return (body['data'] ?? body) as Map<String, dynamic>;
     }
     final error = body['error'] as Map<String, dynamic>?;
-    throw Exception(error?['message'] as String? ?? 'Error desconocido');
+    throw ApiException(error?['message'] as String? ?? 'Error desconocido');
   }
 
   String get _base => ApiConstants.baseUrl;

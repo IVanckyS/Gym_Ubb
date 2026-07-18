@@ -6,11 +6,13 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_utils.dart' as du;
+import '../../../core/utils/error_messages.dart';
 import '../../../core/widgets/section_banner.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/services/history_service.dart';
 import '../../../shared/services/workout_service.dart';
+import '../../../shared/widgets/error_view.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -216,12 +218,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al generar PDF: $e'),
-          backgroundColor: AppColors.accentSecondary,
-        ),
-      );
+      showErrorSnackBar(context, e);
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -341,7 +338,7 @@ class _ProgressTabState extends State<_ProgressTab> {
         }
       });
     } catch (e) {
-      setState(() { _error = e.toString(); _loadingExercises = false; });
+      setState(() { _error = humanizeError(e); _loadingExercises = false; });
     }
   }
 
@@ -788,7 +785,7 @@ class _MeasurementsTabState extends State<_MeasurementsTab> {
       final list = await _service.getMeasurements();
       setState(() { _measurements = list; _loading = false; });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -825,9 +822,7 @@ class _MeasurementsTabState extends State<_MeasurementsTab> {
       setState(() => _measurements.removeWhere((m) => m['id'] == id));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.accentSecondary),
-      );
+      showErrorSnackBar(context, e);
     }
   }
 
@@ -1059,9 +1054,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e'), backgroundColor: AppColors.accentSecondary),
-      );
+      showErrorSnackBar(context, e);
     }
   }
 
@@ -1216,7 +1209,7 @@ class _RecordsTabState extends State<_RecordsTab> {
       final list = await _service.getPersonalRecords();
       setState(() { _records = list; _loading = false; });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -1536,7 +1529,7 @@ class _CalendarTabState extends State<_CalendarTab> {
       setState(() { _statusByDay = days; _loading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 

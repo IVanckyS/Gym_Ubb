@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/users_service.dart';
 import '../../../shared/services/careers_service.dart';
 
@@ -46,14 +47,9 @@ class _UsersScreenState extends State<UsersScreen> {
         _users = users;
         _loading = false;
       });
-    } on UsersException catch (e) {
+    } catch (e) {
       setState(() {
-        _error = e.message;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'Error de conexión';
+        _error = humanizeError(e);
         _loading = false;
       });
     }
@@ -245,8 +241,8 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       await _service.setActive(user['id'] as String, active: !isActive);
       _load();
-    } on UsersException catch (e) {
-      if (mounted) _showSnack(e.message, error: true);
+    } catch (e) {
+      if (mounted) _showSnack(humanizeError(e), error: true);
     }
   }
 
@@ -305,8 +301,8 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       await _service.resetPassword(user['id'] as String, ctrl.text);
       if (mounted) _showSnack('Contraseña actualizada');
-    } on UsersException catch (e) {
-      if (mounted) _showSnack(e.message, error: true);
+    } catch (e) {
+      if (mounted) _showSnack(humanizeError(e), error: true);
     }
   }
 }
@@ -581,14 +577,9 @@ class _UserDialogState extends State<_UserDialog> {
         );
       }
       if (mounted) Navigator.pop(context, true);
-    } on UsersException catch (e) {
+    } catch (e) {
       setState(() {
-        _error = e.message;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _error = 'Error de conexión';
+        _error = humanizeError(e);
         _loading = false;
       });
     }

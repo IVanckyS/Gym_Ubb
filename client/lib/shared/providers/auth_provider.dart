@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../core/utils/error_messages.dart';
 import '../services/auth_service.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -42,13 +43,8 @@ class AuthProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
       return true;
-    } on AuthException catch (e) {
-      _error = e.message;
-      _loading = false;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _error = 'Error de conexión. Verifica tu red.';
+    } catch (e) {
+      _error = humanizeError(e);
       _loading = false;
       notifyListeners();
       return false;
@@ -71,13 +67,8 @@ class AuthProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
       return true;
-    } on AuthException catch (e) {
-      _error = e.message;
-      _loading = false;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _error = 'Error de conexión. Verifica tu red.';
+    } catch (e) {
+      _error = humanizeError(e);
       _loading = false;
       notifyListeners();
       return false;

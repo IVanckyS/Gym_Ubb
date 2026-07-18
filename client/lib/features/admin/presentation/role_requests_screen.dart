@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_utils.dart' as du;
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/role_requests_service.dart';
 
 class RoleRequestsScreen extends StatefulWidget {
@@ -38,7 +39,7 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = humanizeError(e);
         _loading = false;
       });
     }
@@ -72,11 +73,8 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
         SnackBar(content: Text('${req['userName']} ahora es Profesor')),
       );
       _load();
-    } on RoleRequestsException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-      _load();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(humanizeError(e))));
       _load();
     }
   }
@@ -129,11 +127,8 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
       await _service.reject(req['id'] as String, comment: comment);
       messenger.showSnackBar(const SnackBar(content: Text('Solicitud rechazada')));
       _load();
-    } on RoleRequestsException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-      _load();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(humanizeError(e))));
       _load();
     }
   }
@@ -168,8 +163,9 @@ class _RoleRequestsScreenState extends State<RoleRequestsScreen> {
           const SizedBox(height: 12),
           Center(
             child: Text(
-              'No se pudieron cargar las solicitudes',
+              _error ?? 'No se pudieron cargar las solicitudes',
               style: TextStyle(color: context.colorTextSecondary),
+              textAlign: TextAlign.center,
             ),
           ),
           const SizedBox(height: 16),

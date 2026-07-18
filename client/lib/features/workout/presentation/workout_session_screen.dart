@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/utils/weight_utils.dart';
 import '../../../features/profile/providers/weight_unit_notifier.dart';
 import '../../../shared/services/exercises_service.dart';
 import '../../../shared/services/workout_service.dart';
+import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/youtube_video_card.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -94,7 +96,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       );
       _loadSession(session);
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -319,9 +321,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _finishing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.accentSecondary),
-      );
+      showErrorSnackBar(context, e);
     }
   }
 

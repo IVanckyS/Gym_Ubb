@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/error_messages.dart';
 import 'auth_service.dart';
 
 class JointExercisesService {
@@ -57,7 +58,8 @@ class JointExercisesService {
   }
 }
 
-class JointExercisesException implements Exception {
+class JointExercisesException implements AppException {
+  @override
   final String message;
   const JointExercisesException(this.message);
   @override

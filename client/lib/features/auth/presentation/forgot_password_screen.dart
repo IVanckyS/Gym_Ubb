@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -38,10 +39,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await _authService.forgotPasswordRequest(email: email);
       if (!mounted) return;
       context.push('/forgot-password/verify', extra: {'email': email});
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Error de conexión. Intenta de nuevo.');
+    } catch (e) {
+      if (mounted) setState(() => _error = humanizeError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

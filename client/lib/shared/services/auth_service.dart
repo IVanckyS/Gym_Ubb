@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/utils/error_messages.dart';
 import 'api_client.dart';
 
 class AuthService {
@@ -207,8 +208,9 @@ class AuthService {
   }
 }
 
-class AuthException implements Exception {
+class AuthException implements AppException {
   final String code;
+  @override
   final String message;
 
   const AuthException({required this.code, required this.message});

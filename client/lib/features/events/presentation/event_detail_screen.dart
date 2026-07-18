@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/events_service.dart';
+import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/location_search_field.dart';
 
 Color _typeColor(String type) => switch (type.toLowerCase()) {
@@ -59,7 +61,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final event = await _service.getEvent(widget.id);
       if (mounted) setState(() { _event = event; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -78,12 +80,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _togglingInterest = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.accentSecondary,
-          ),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -117,9 +114,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (mounted) setState(() => _event!['isActive'] = true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -154,11 +149,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (mounted) setState(() => _event!['isActive'] = false);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()),
-              backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -688,12 +679,7 @@ class _EditEventSheetState extends State<_EditEventSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.accentSecondary,
-          ),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }

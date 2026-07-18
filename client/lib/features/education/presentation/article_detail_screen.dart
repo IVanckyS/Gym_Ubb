@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/services/articles_service.dart';
+import '../../../shared/widgets/error_view.dart';
 
 Color _categoryColor(String key) => switch (key) {
       'biomecanica' => const Color(0xFF3B82F6),
@@ -52,7 +54,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       final article = await _service.getArticle(widget.id);
       if (mounted) setState(() { _article = article; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) setState(() { _error = humanizeError(e); _loading = false; });
     }
   }
 
@@ -70,9 +72,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _togglingFav = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -107,9 +107,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.accentSecondary),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }
@@ -505,12 +503,7 @@ class _EditArticleSheetState extends State<_EditArticleSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.accentSecondary,
-          ),
-        );
+        showErrorSnackBar(context, e);
       }
     }
   }

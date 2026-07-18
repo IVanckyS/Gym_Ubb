@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/auth_service.dart';
 import '../../../shared/widgets/career_picker_field.dart';
 
@@ -63,10 +64,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'email': _emailCtrl.text.trim().toLowerCase(),
         'name': _nameCtrl.text.trim(),
       });
-    } on AuthException catch (e) {
-      setState(() => _error = e.message);
-    } catch (_) {
-      setState(() => _error = 'Error de conexión. Verifica tu red.');
+    } catch (e) {
+      setState(() => _error = humanizeError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

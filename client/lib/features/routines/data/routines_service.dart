@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../shared/services/auth_service.dart';
 
 class RoutinesService {
@@ -139,7 +140,8 @@ class RoutinesService {
   }
 }
 
-class RoutinesException implements Exception {
+class RoutinesException implements AppException {
+  @override
   final String message;
   const RoutinesException(this.message);
   @override
